@@ -1,0 +1,5 @@
+{
+  "source": "労働基準法（時間外・休日・深夜の割増賃金）",
+  "premiums": {"overtime": 1.25, "overtime_over_60_extra": 0.25, "night_extra": 0.25, "holiday": 1.35},
+  "notes": "月60時間超の時間外、変形労働時間制・法定休日判定は就業規則に合わせて拡張してください。"
+}

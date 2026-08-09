@@ -1,0 +1,5 @@
+{
+  "source": "国税庁 令和8年分 源泉徴収税額表",
+  "monthly_table_csv": "monthly_tax_table.csv",
+  "notes": "国税庁の月額表をCSV（lower,upper,category,dependents,tax）に整形して同ディレクトリへ保存してください。表未登録時は所得税を0円にし警告します。"
+}

@@ -1,0 +1,12 @@
+{
+  "source": "協会けんぽ令和8年度都道府県別保険料率・日本年金機構・厚生労働省",
+  "health_rate_by_prefecture": {"東京都": 0.0985},
+  "nursing_rate": 0.0159,
+  "pension_rate": 0.183,
+  "employment_employee_rate": 0.005,
+  "social_eligibility": {"regular_weekly_hours": 40, "weekly_hours_ratio": 0.75, "short_worker_weekly_hours": 20, "minimum_workplace_size": 51},
+  "employment_eligibility": {"weekly_hours": 20, "contract_months": 1},
+  "nursing_age_min": 40,
+  "nursing_age_max": 65,
+  "notes": "健康保険料率は都道府県・支部等により必ず更新。標準報酬月額等級表の丸め・賞与は本版の対象外。"
+}
