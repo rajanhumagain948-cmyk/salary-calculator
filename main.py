@@ -195,9 +195,46 @@ class SalaryApp(ttk.Frame):
 
     def select_employee(self) -> None:
         selected = self.employee_tree.selection()
-        if selected:
-            self.employee = next(e for e in self.repo.employees() if e.employee_id == selected[0]); self.records = self.repo.work_records(self.employee.employee_id, self.year_month.get()); self.load_terms(); self.load_monthly_inputs(); self.refresh_records()
-            self.status_badge.set(f"選択中：{self.employee.name}（{self.employee.employee_id}）")
+        if not selected:
+            return
+
+        self.employee = next(
+            e for e in self.repo.employees()
+            if e.employee_id == selected[0]
+        )
+
+        # 選択した従業員の情報をフォームへ表示
+        self.emp_vars["id"].set(self.employee.employee_id)
+        self.emp_vars["name"].set(self.employee.name)
+        self.emp_vars["hire"].set(self.employee.hire_date.strftime("%Y/%m/%d"))
+        self.emp_vars["hourly"].set(str(self.employee.hourly_rate))
+        self.emp_vars["monthly"].set(str(self.employee.monthly_salary))
+        self.emp_vars["hours"].set(str(self.employee.weekly_hours))
+        self.emp_vars["days"].set(str(self.employee.weekly_days))
+        self.emp_vars["size"].set(str(self.employee.workplace_size))
+        self.emp_vars["dependents"].set(str(self.employee.dependents))
+        self.emp_vars["resident"].set(str(self.employee.resident_tax_monthly))
+        self.emp_vars["standard"].set(
+            str(self.employee.standard_monthly_remuneration)
+        )
+
+        self.emp_type.set(self.employee.employment_type)
+        self.pay_type.set(self.employee.pay_type)
+        self.tax_type.set(self.employee.tax_category)
+        self.resident_method.set(self.employee.resident_tax_method)
+
+        self.records = self.repo.work_records(
+            self.employee.employee_id,
+            self.year_month.get()
+        )
+
+        self.load_terms()
+        self.load_monthly_inputs()
+        self.refresh_records()
+
+        self.status_badge.set(
+            f"選択中：{self.employee.name}（{self.employee.employee_id}）"
+        )
 
     def load_terms(self) -> None:
         if not self.employee: return
