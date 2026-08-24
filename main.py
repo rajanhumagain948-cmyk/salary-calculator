@@ -1,4 +1,5 @@
 from __future__ import annotations
+from models.leave_request import LeaveRequest
 from models.user import User
 from services.auth_service import hash_password, verify_password
 import csv
@@ -151,6 +152,7 @@ class SalaryApp(ttk.Frame):
                 self.status_badge.set(
                     f"ログイン中：{employee.name}（{employee.employee_id}）"
                 )
+                self.refresh_leave_requests()
 
     def _setup_style(self) -> None:
         style = ttk.Style(self.root)
@@ -172,6 +174,7 @@ class SalaryApp(ttk.Frame):
         self.attendance_tab = ttk.Frame(notebook, padding=10)
         self.payroll_tab = ttk.Frame(notebook, padding=10)
         self.payslip_tab = ttk.Frame(notebook, padding=10)
+        self.leave_tab = ttk.Frame(notebook, padding=10)
         self.analysis_tab = ttk.Frame(notebook, padding=10)
         if self.current_user.role == "admin":
             notebook.add(self.employee_tab, text="👤 従業員管理")
@@ -182,7 +185,8 @@ class SalaryApp(ttk.Frame):
         else:
             notebook.add(self.attendance_tab, text="📅 マイ勤怠")
             notebook.add(self.payslip_tab, text="📄 マイ給与明細")
-        self._employee_ui(); self._attendance_ui(); self._payroll_ui(); self._payslip_ui(); self._analysis_ui()
+            notebook.add(self.leave_tab, text="🏖 有給申請")
+        self._employee_ui(); self._attendance_ui(); self._payroll_ui(); self._payslip_ui(); self._leave_ui(); self._analysis_ui()
 
     def _employee_ui(self) -> None:
         form = ttk.LabelFrame(self.employee_tab, text="従業員情報", padding=10); form.pack(fill="x")
@@ -268,6 +272,144 @@ class SalaryApp(ttk.Frame):
     def _payslip_ui(self) -> None:
         ttk.Button(self.payslip_tab, text="PDF出力", command=self.pdf).pack(anchor="w")
         self.payslip = tk.Text(self.payslip_tab, height=31, wrap="word"); self.payslip.pack(fill="both", expand=True, pady=8)
+
+    def _leave_ui(self) -> None:
+        form = ttk.LabelFrame(
+            self.leave_tab,
+            text="有給休暇申請",
+            padding=12,
+        )
+        form.pack(fill="x")
+
+        self.leave_date = tk.StringVar(
+            value=date.today().strftime("%Y/%m/%d")
+        )
+        self.leave_reason = tk.StringVar()
+
+        ttk.Label(
+            form,
+            text="取得希望日",
+        ).grid(row=0, column=0, padx=5, pady=5)
+
+        if DateEntry is not ttk.Entry:
+            DateEntry(
+                form,
+                textvariable=self.leave_date,
+                date_pattern="yyyy/mm/dd",
+                width=12,
+            ).grid(row=0, column=1, padx=5, pady=5)
+        else:
+            ttk.Entry(
+                form,
+                textvariable=self.leave_date,
+                width=14,
+            ).grid(row=0, column=1, padx=5, pady=5)
+
+        ttk.Label(
+            form,
+            text="理由・備考",
+        ).grid(row=0, column=2, padx=5, pady=5)
+
+        ttk.Entry(
+            form,
+            textvariable=self.leave_reason,
+            width=35,
+        ).grid(row=0, column=3, padx=5, pady=5)
+
+        ttk.Button(
+            form,
+            text="有給を申請",
+            command=self.submit_leave_request,
+        ).grid(row=0, column=4, padx=10, pady=5)
+
+        history = ttk.LabelFrame(
+            self.leave_tab,
+            text="申請履歴",
+            padding=8,
+        )
+        history.pack(
+            fill="both",
+            expand=True,
+            pady=(10, 0),
+        )
+
+        self.leave_tree = ttk.Treeview(
+            history,
+            columns=("date", "reason", "status"),
+            show="headings",
+        )
+
+        self.leave_tree.heading("date", text="取得希望日")
+        self.leave_tree.heading("reason", text="理由・備考")
+        self.leave_tree.heading("status", text="状態")
+
+        self.leave_tree.column("date", width=130)
+        self.leave_tree.column("reason", width=400)
+        self.leave_tree.column("status", width=100)
+
+        self.leave_tree.pack(
+            fill="both",
+            expand=True,
+        )
+
+    def submit_leave_request(self) -> None:
+        if (
+            self.current_user.role != "employee"
+            or not self.current_user.employee_id
+        ):
+            return messagebox.showwarning(
+                "有給申請",
+                "社員アカウントでログインしてください。",
+            )
+
+        try:
+            request = LeaveRequest(
+                employee_id=self.current_user.employee_id,
+                leave_date=parse_date(self.leave_date.get()),
+                reason=self.leave_reason.get().strip(),
+            )
+
+            self.repo.save_leave_request(request)
+
+            self.leave_reason.set("")
+            self.refresh_leave_requests()
+
+            messagebox.showinfo(
+                "有給申請",
+                "有給休暇を申請しました。",
+            )
+
+        except Exception as error:
+            messagebox.showerror(
+                "有給申請エラー",
+                str(error),
+            )
+
+    def refresh_leave_requests(self) -> None:
+        for item in self.leave_tree.get_children():
+            self.leave_tree.delete(item)
+
+        if (
+            self.current_user.role != "employee"
+            or not self.current_user.employee_id
+        ):
+            return
+
+        requests = self.repo.leave_requests(
+            self.current_user.employee_id
+        )
+
+        for request in requests:
+            self.leave_tree.insert(
+                "",
+                "end",
+                iid=str(request.request_id),
+                values=(
+                    request.leave_date.strftime("%Y/%m/%d"),
+                    request.reason,
+                    request.status,
+                ),
+            )
 
     def _analysis_ui(self) -> None:
         settings = ttk.LabelFrame(self.analysis_tab, text="会社情報（給与明細に表示）", padding=10); settings.pack(fill="x")

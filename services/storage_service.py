@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from models.leave_request import LeaveRequest
 from dataclasses import asdict
 from datetime import date, datetime
 from decimal import Decimal
@@ -112,6 +113,18 @@ class PayrollRepository:
             )
             """
         )
+        self.connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS leave_requests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                employee_id TEXT NOT NULL,
+                leave_date TEXT NOT NULL,
+                reason TEXT NOT NULL DEFAULT '',
+                status TEXT NOT NULL DEFAULT '申請中',
+                created_at TEXT NOT NULL
+            )
+            """
+        )
 
         self.connection.commit()
 
@@ -122,6 +135,84 @@ class PayrollRepository:
             ensure_ascii=False,
             default=lambda o: str(o),
         )
+
+    def save_leave_request(self, request: LeaveRequest) -> LeaveRequest:
+        created_at = request.created_at or datetime.now()
+
+        cursor = self.connection.execute(
+            """
+            INSERT INTO leave_requests
+            (employee_id, leave_date, reason, status, created_at)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                request.employee_id,
+                request.leave_date.isoformat(),
+                request.reason,
+                request.status,
+                created_at.isoformat(timespec="seconds"),
+            ),
+        )
+
+        self.connection.commit()
+
+        request.request_id = cursor.lastrowid
+        request.created_at = created_at
+
+        return request
+
+    def leave_requests(
+        self,
+        employee_id: str | None = None,
+    ) -> list[LeaveRequest]:
+        if employee_id:
+            rows = self.connection.execute(
+                """
+                SELECT id, employee_id, leave_date, reason, status, created_at
+                FROM leave_requests
+                WHERE employee_id = ?
+                ORDER BY leave_date DESC, id DESC
+                """,
+                (employee_id,),
+            ).fetchall()
+        else:
+            rows = self.connection.execute(
+                """
+                SELECT id, employee_id, leave_date, reason, status, created_at
+                FROM leave_requests
+                ORDER BY leave_date DESC, id DESC
+                """
+            ).fetchall()
+
+        return [
+            LeaveRequest(
+                request_id=row[0],
+                employee_id=row[1],
+                leave_date=date.fromisoformat(row[2]),
+                reason=row[3],
+                status=row[4],
+                created_at=datetime.fromisoformat(row[5]),
+            )
+            for row in rows
+        ]
+
+    def update_leave_status(
+        self,
+        request_id: int,
+        status: str,
+    ) -> None:
+        if status not in ("承認", "却下"):
+            raise ValueError("不正な承認状態です。")
+
+        self.connection.execute(
+            """
+            UPDATE leave_requests
+            SET status = ?
+            WHERE id = ?
+            """,
+            (status, request_id),
+        )
+        self.connection.commit()
 
     # ------------------------------------------------------------------
     # Users / Authentication
