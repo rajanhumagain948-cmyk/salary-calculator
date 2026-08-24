@@ -1,4 +1,6 @@
 from __future__ import annotations
+from models.user import User
+from services.auth_service import hash_password, verify_password
 import csv
 import shutil
 from datetime import date
@@ -25,6 +27,84 @@ from services.time_service import parse_date, parse_time
 from services.export_service import export_payroll_ledger, export_payslip_zip
 
 BASE = Path(__file__).resolve().parent
+
+class LoginWindow(ttk.Frame):
+    def __init__(self, root: tk.Tk) -> None:
+        super().__init__(root, padding=30)
+        self.root = root
+        self.repo = PayrollRepository(BASE / "data" / "payroll.sqlite3")
+
+        root.title("給与計算 - ログイン")
+        root.geometry("420x280")
+        root.resizable(False, False)
+
+        self.username = tk.StringVar()
+        self.password = tk.StringVar()
+
+        self.pack(fill="both", expand=True)
+
+        ttk.Label(
+            self,
+            text="給与計算システム",
+            font=("Helvetica", 20, "bold"),
+        ).pack(pady=(15, 25))
+
+        form = ttk.Frame(self)
+        form.pack()
+
+        ttk.Label(form, text="ユーザー名").grid(
+            row=0, column=0, sticky="w", pady=8
+        )
+        username_entry = ttk.Entry(
+            form,
+            textvariable=self.username,
+            width=25,
+        )
+        username_entry.grid(row=0, column=1, padx=10, pady=8)
+
+        ttk.Label(form, text="パスワード").grid(
+            row=1, column=0, sticky="w", pady=8
+        )
+        password_entry = ttk.Entry(
+            form,
+            textvariable=self.password,
+            show="*",
+            width=25,
+        )
+        password_entry.grid(row=1, column=1, padx=10, pady=8)
+
+        ttk.Button(
+            self,
+            text="ログイン",
+            command=self.login,
+        ).pack(pady=20)
+
+        username_entry.focus()
+        password_entry.bind("<Return>", lambda _: self.login())
+
+    def login(self) -> None:
+        username = self.username.get().strip()
+        password = self.password.get()
+
+        user = self.repo.user(username)
+
+        if (
+            user is None
+            or not user.active
+            or not verify_password(password, user.password_hash)
+        ):
+            messagebox.showerror(
+                "ログインエラー",
+                "ユーザー名またはパスワードが正しくありません。",
+            )
+            return
+
+        self.destroy()
+
+        self.root.geometry("")
+        self.root.resizable(True, True)
+
+        SalaryApp(self.root)
 
 class SalaryApp(ttk.Frame):
     def __init__(self, root: tk.Tk) -> None:
@@ -420,4 +500,6 @@ class SalaryApp(ttk.Frame):
         except Exception as error: messagebox.showerror("CSVエラー", str(error))
 
 if __name__ == "__main__":
-    root = tk.Tk(); SalaryApp(root); root.mainloop()
+    root = tk.Tk()
+    LoginWindow(root)
+    root.mainloop()
