@@ -104,11 +104,12 @@ class LoginWindow(ttk.Frame):
         self.root.geometry("")
         self.root.resizable(True, True)
 
-        SalaryApp(self.root)
+        SalaryApp(self.root, user)
 
 class SalaryApp(ttk.Frame):
-    def __init__(self, root: tk.Tk) -> None:
+    def __init__(self, root: tk.Tk, current_user: User) -> None:
         super().__init__(root, padding=12)
+        self.current_user = current_user
         self.root, self.repo = root, PayrollRepository(BASE / "data" / "payroll.sqlite3")
         self.records: list[WorkRecord] = []
         self.editing_record_id: int | None = None
@@ -124,6 +125,32 @@ class SalaryApp(ttk.Frame):
         self.company = self.repo.company()
         self.company_name.set(self.company.name); self.company_address.set(self.company.address); self.company_representative.set(self.company.representative)
         self.refresh_employees()
+
+        if (
+            self.current_user.role == "employee"
+            and self.current_user.employee_id
+        ):
+            employee = next(
+                (
+                    item
+                    for item in self.repo.employees()
+                    if item.employee_id == self.current_user.employee_id
+                ),
+                None,
+            )
+
+            if employee:
+                self.employee = employee
+                self.records = self.repo.work_records(
+                    employee.employee_id,
+                    self.year_month.get(),
+                )
+                self.load_terms()
+                self.load_monthly_inputs()
+                self.refresh_records()
+                self.status_badge.set(
+                    f"ログイン中：{employee.name}（{employee.employee_id}）"
+                )
 
     def _setup_style(self) -> None:
         style = ttk.Style(self.root)
@@ -146,11 +173,15 @@ class SalaryApp(ttk.Frame):
         self.payroll_tab = ttk.Frame(notebook, padding=10)
         self.payslip_tab = ttk.Frame(notebook, padding=10)
         self.analysis_tab = ttk.Frame(notebook, padding=10)
-        notebook.add(self.employee_tab, text="👤 従業員管理")
-        notebook.add(self.attendance_tab, text="📅 勤怠管理")
-        notebook.add(self.payroll_tab, text="💰 給与計算")
-        notebook.add(self.payslip_tab, text="📄 給与明細")
-        notebook.add(self.analysis_tab, text="⚙️ 会社設定・月次管理")
+        if self.current_user.role == "admin":
+            notebook.add(self.employee_tab, text="👤 従業員管理")
+            notebook.add(self.attendance_tab, text="📅 勤怠管理")
+            notebook.add(self.payroll_tab, text="💰 給与計算")
+            notebook.add(self.payslip_tab, text="📄 給与明細")
+            notebook.add(self.analysis_tab, text="⚙️ 会社設定・月次管理")
+        else:
+            notebook.add(self.attendance_tab, text="📅 マイ勤怠")
+            notebook.add(self.payslip_tab, text="📄 マイ給与明細")
         self._employee_ui(); self._attendance_ui(); self._payroll_ui(); self._payslip_ui(); self._analysis_ui()
 
     def _employee_ui(self) -> None:
@@ -475,10 +506,47 @@ class SalaryApp(ttk.Frame):
         except Exception as error: messagebox.showerror("税額表", str(error))
 
     def pdf(self) -> None:
-        if not self.result or not self.employee: return messagebox.showwarning("給与明細", "先に計算してください。")
-        if not self.result.finalized: return messagebox.showwarning("給与明細", "給与を確定してからPDFを出力してください。")
-        path = filedialog.asksaveasfilename(defaultextension=".pdf", initialdir=BASE / "exports", filetypes=[("PDF", "*.pdf")])
-        if path: export_pdf(self.employee, self.result, Path(path)); messagebox.showinfo("PDF", "出力しました。")
+        if not self.employee:
+            return messagebox.showwarning(
+                "給与明細",
+                "従業員情報を取得できません。",
+            )
+
+        # 社員側では会社が保存した給与結果をDBから取得する
+        if self.current_user.role == "employee":
+            self.result = self.repo.payroll_result(
+                self.employee.employee_id,
+                self.year_month.get(),
+            )
+
+        if not self.result:
+            return messagebox.showwarning(
+                "給与明細",
+                "この月の給与明細はまだありません。",
+            )
+
+        if not self.result.finalized:
+            return messagebox.showwarning(
+                "給与明細",
+                "会社側で給与がまだ確定されていません。",
+            )
+
+        path = filedialog.asksaveasfilename(
+            defaultextension=".pdf",
+            initialdir=BASE / "exports",
+            filetypes=[("PDF", "*.pdf")],
+        )
+
+        if path:
+            export_pdf(
+                self.employee,
+                self.result,
+                Path(path),
+            )
+            messagebox.showinfo(
+                "PDF",
+                "給与明細を出力しました。",
+            )
 
     def export_csv(self) -> None:
         path = filedialog.asksaveasfilename(defaultextension=".csv", initialdir=BASE / "exports", filetypes=[("CSV", "*.csv")])

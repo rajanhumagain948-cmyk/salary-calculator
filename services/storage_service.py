@@ -426,6 +426,22 @@ class PayrollRepository:
 
         return results
 
+    def payroll_result(
+        self,
+        employee_id: str,
+        year_month: str,
+    ) -> PayrollResult | None:
+        results = self.payroll_results(year_month)
+
+        return next(
+            (
+                result
+                for result in results
+                if result.employee_id == employee_id
+            ),
+            None,
+        )
+
     # ------------------------------------------------------------------
     # Employment terms
     # ------------------------------------------------------------------
