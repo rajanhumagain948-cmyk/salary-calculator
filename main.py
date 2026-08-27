@@ -175,6 +175,7 @@ class SalaryApp(ttk.Frame):
         self.payroll_tab = ttk.Frame(notebook, padding=10)
         self.payslip_tab = ttk.Frame(notebook, padding=10)
         self.leave_tab = ttk.Frame(notebook, padding=10)
+        self.leave_admin_tab = ttk.Frame(notebook, padding=10)
         self.analysis_tab = ttk.Frame(notebook, padding=10)
         if self.current_user.role == "admin":
             notebook.add(self.employee_tab, text="👤 従業員管理")
@@ -182,11 +183,12 @@ class SalaryApp(ttk.Frame):
             notebook.add(self.payroll_tab, text="💰 給与計算")
             notebook.add(self.payslip_tab, text="📄 給与明細")
             notebook.add(self.analysis_tab, text="⚙️ 会社設定・月次管理")
+            notebook.add(self.leave_admin_tab, text="🏖 有給管理")
         else:
             notebook.add(self.attendance_tab, text="📅 マイ勤怠")
             notebook.add(self.payslip_tab, text="📄 マイ給与明細")
             notebook.add(self.leave_tab, text="🏖 有給申請")
-        self._employee_ui(); self._attendance_ui(); self._payroll_ui(); self._payslip_ui(); self._leave_ui(); self._analysis_ui()
+        self._employee_ui(); self._attendance_ui(); self._payroll_ui(); self._payslip_ui(); self._leave_ui(); self._leave_admin_ui(); self._analysis_ui()
 
     def _employee_ui(self) -> None:
         form = ttk.LabelFrame(self.employee_tab, text="従業員情報", padding=10); form.pack(fill="x")
@@ -351,7 +353,112 @@ class SalaryApp(ttk.Frame):
             fill="both",
             expand=True,
         )
+    def _leave_admin_ui(self) -> None:
+        box = ttk.LabelFrame(
+            self.leave_admin_tab,
+            text="有給申請（管理者）",
+            padding=10,
+        )
+        box.pack(fill="both", expand=True)
 
+        # フィルタ
+        filter_row = ttk.Frame(box)
+        filter_row.pack(fill="x", pady=(0, 8))
+
+        self.leave_admin_filter = tk.StringVar(value="申請中のみ")
+        ttk.Label(filter_row, text="表示:").pack(side="left")
+
+        ttk.Combobox(
+            filter_row,
+            textvariable=self.leave_admin_filter,
+            values=["申請中のみ", "すべて"],
+            state="readonly",
+            width=12,
+        ).pack(side="left", padx=6)
+
+        ttk.Button(
+            filter_row,
+            text="更新",
+            command=self.refresh_leave_requests_admin,
+        ).pack(side="left", padx=6)
+
+        # 一覧
+        self.leave_admin_tree = ttk.Treeview(
+            box,
+            columns=("id", "employee_id", "date", "reason", "status", "created_at"),
+            show="headings",
+            height=14,
+        )
+
+        for key, label, width in (
+            ("id", "ID", 60),
+            ("employee_id", "社員番号", 120),
+            ("date", "取得日", 110),
+            ("reason", "理由・備考", 360),
+            ("status", "状態", 90),
+            ("created_at", "申請日時", 150),
+        ):
+            self.leave_admin_tree.heading(key, text=label)
+            self.leave_admin_tree.column(key, width=width)
+
+            self.leave_admin_tree.pack(fill="both", expand=True, pady=(0, 8))
+        # 操作ボタン
+        btns = ttk.Frame(box)
+        btns.pack(side="bottom", fill="x", pady=8)
+
+        ttk.Button(
+            btns,
+            text="承認",
+            command=lambda: self.set_leave_status_selected("承認"),
+        ).pack(side="left", padx=6)
+
+        ttk.Button(
+            btns,
+            text="却下",
+            command=lambda: self.set_leave_status_selected("却下"),
+        ).pack(side="left", padx=6)
+
+        self.refresh_leave_requests_admin()
+
+    def refresh_leave_requests_admin(self) -> None:
+        # クリア
+        for item in self.leave_admin_tree.get_children():
+            self.leave_admin_tree.delete(item)
+
+        requests = self.repo.leave_requests(None)
+
+        # フィルタ
+        if self.leave_admin_filter.get() == "申請中のみ":
+            requests = [r for r in requests if r.status == "申請中"]
+
+        for r in requests:
+            self.leave_admin_tree.insert(
+                "",
+                "end",
+                iid=str(r.request_id),
+                values=(
+                    r.request_id,
+                    r.employee_id,
+                    r.leave_date.strftime("%Y/%m/%d"),
+                    r.reason,
+                    r.status,
+                    r.created_at.isoformat(timespec="seconds") if r.created_at else "",
+                ),
+            )
+
+    def set_leave_status_selected(self, status: str) -> None:
+        selected = self.leave_admin_tree.selection()
+        if not selected:
+            return messagebox.showwarning("有給管理", "対象行を選択してください。")
+
+        request_id = int(selected[0])
+
+        try:
+            self.repo.update_leave_status(request_id, status)
+            self.refresh_leave_requests_admin()
+            messagebox.showinfo("有給管理", f"{status}にしました。")
+        except Exception as error:
+            messagebox.showerror("有給管理エラー", str(error))
     def submit_leave_request(self) -> None:
         if (
             self.current_user.role != "employee"
