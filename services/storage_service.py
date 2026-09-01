@@ -27,8 +27,7 @@ class PayrollRepository:
         # 初回起動でも動作するよう自動作成する。
         database.parent.mkdir(parents=True, exist_ok=True)
 
-        self.connection = sqlite3.connect(database)
-
+        self.connection = sqlite3.connect(database, check_same_thread=False)
         self.connection.execute(
             """
             CREATE TABLE IF NOT EXISTS employees (
