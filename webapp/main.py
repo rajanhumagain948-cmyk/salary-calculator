@@ -7,6 +7,8 @@ from services.storage_service import PayrollRepository
 from services.auth_service import verify_password
 from pathlib import Path
 from fastapi.middleware.cors import CORSMiddleware
+from datetime import date
+from models.shifts import Shift
 
 app = FastAPI(title="Salary Calculator Web")
 app.add_middleware(
@@ -160,3 +162,47 @@ def get_shifts(year_month: str, request: Request, employee_id: str | None = None
         }
         for s in shifts
     ]
+
+@app.post("/shifts")
+def upsert_shift(
+    request: Request,
+    employee_id: str = Form(...),
+    shift_date: str = Form(...),  # YYYY-MM-DD
+    start_minute: int = Form(...),
+    end_minute: int = Form(...),
+    break_minutes: int = Form(0),
+    note: str = Form(""),
+    confirmed: int = Form(0),
+    shift_id: int | None = Form(None),
+):
+    user = require_user(request)
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="admin only")
+
+    s = Shift(
+        employee_id=employee_id,
+        shift_date=date.fromisoformat(shift_date),
+        start_minute=int(start_minute),
+        end_minute=int(end_minute),
+        break_minutes=int(break_minutes),
+        note=note,
+        confirmed=bool(int(confirmed)),
+        shift_id=int(shift_id) if shift_id is not None else None,
+    )
+
+    saved = repo.save_shift(s)
+    return {"ok": True, "shift_id": saved.shift_id}
+
+
+@app.post("/shifts/delete")
+def delete_shift(
+    request: Request,
+    employee_id: str = Form(...),
+    shift_id: int = Form(...),
+):
+    user = require_user(request)
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="admin only")
+
+    repo.delete_shift(employee_id, int(shift_id))
+    return {"ok": True}

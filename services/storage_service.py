@@ -259,6 +259,57 @@ class PayrollRepository:
             for row in rows
         ]
 
+    def save_shift(self, shift: Shift) -> Shift:
+        if shift.shift_id is None:
+            cursor = self.connection.execute(
+                """
+                INSERT INTO shifts
+                (employee_id, shift_date, start_minute, end_minute, break_minutes, note, confirmed)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    shift.employee_id,
+                    shift.shift_date.isoformat(),
+                    int(shift.start_minute),
+                    int(shift.end_minute),
+                    int(shift.break_minutes),
+                    shift.note,
+                    int(shift.confirmed),
+                ),
+            )
+            self.connection.commit()
+            shift.shift_id = cursor.lastrowid
+            return shift
+
+        self.connection.execute(
+            """
+            UPDATE shifts
+            SET shift_date=?, start_minute=?, end_minute=?, break_minutes=?, note=?, confirmed=?
+            WHERE id=? AND employee_id=?
+            """,
+            (
+                shift.shift_date.isoformat(),
+                int(shift.start_minute),
+                int(shift.end_minute),
+                int(shift.break_minutes),
+                shift.note,
+                int(shift.confirmed),
+                int(shift.shift_id),
+                shift.employee_id,
+            ),
+        )
+        self.connection.commit()
+        return shift
+
+    def delete_shift(self, employee_id: str, shift_id: int) -> None:
+        self.connection.execute(
+            """
+            DELETE FROM shifts
+            WHERE id = ? AND employee_id = ?
+            """,
+            (int(shift_id), employee_id),
+        )
+        self.connection.commit()
     # ------------------------------------------------------------------
     # Users / Authentication
     # ------------------------------------------------------------------
