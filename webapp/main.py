@@ -6,8 +6,19 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from services.storage_service import PayrollRepository
 from services.auth_service import verify_password
 from pathlib import Path
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="Salary Calculator Web")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://127.0.0.1:3000",
+        "http://localhost:3000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 templates = Jinja2Templates(directory="webapp/templates")
 
 repo = PayrollRepository(Path("data/payroll.sqlite3"))
