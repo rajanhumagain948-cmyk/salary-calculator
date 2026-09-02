@@ -161,16 +161,17 @@ export default function ShiftsPage() {
           />
         </label>
 
-        <label>
-          employee_id（管理者のみ）
-          <input
-            value={employeeId}
-            onChange={(e) => setEmployeeId(e.target.value)}
-            placeholder="W250651 など"
-            disabled={me?.role !== "admin"}
-            style={{ width: 180, padding: 8, display: "block" }}
-          />
-        </label>
+        {me?.role === "admin" && (
+  <label>
+    employee_id（管理者のみ）
+    <input
+      value={employeeId}
+      onChange={(e) => setEmployeeId(e.target.value)}
+      placeholder="W250651 など"
+      style={{ width: 180, padding: 8, display: "block" }}
+    />
+  </label>
+)}
 
         <button
           onClick={loadShifts}
