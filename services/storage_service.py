@@ -19,6 +19,7 @@ from models.payroll import PayrollResult
 from models.transportation import Transportation
 from models.user import User
 from models.work_record import WorkRecord
+from models.shifts import Shift
 
 
 class PayrollRepository:
@@ -127,6 +128,21 @@ class PayrollRepository:
 
         self.connection.commit()
 
+        self.connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS shifts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                employee_id TEXT NOT NULL,
+                shift_date TEXT NOT NULL,
+                start_minute INTEGER NOT NULL,
+                end_minute INTEGER NOT NULL,
+                break_minutes INTEGER NOT NULL DEFAULT 0,
+                note TEXT NOT NULL DEFAULT '',
+                confirmed INTEGER NOT NULL DEFAULT 0
+            )
+            """
+        )
+
     @staticmethod
     def _dump(value: object) -> str:
         return json.dumps(
@@ -213,6 +229,87 @@ class PayrollRepository:
         )
         self.connection.commit()
 
+    def shifts(
+        self,
+        employee_id: str,
+        year_month: str,
+    ) -> list[Shift]:
+        rows = self.connection.execute(
+            """
+            SELECT id, employee_id, shift_date, start_minute, end_minute, break_minutes, note, confirmed
+            FROM shifts
+            WHERE employee_id = ?
+              AND shift_date LIKE ?
+            ORDER BY shift_date, id
+            """,
+            (employee_id, f"{year_month}%"),
+        ).fetchall()
+
+        return [
+            Shift(
+                shift_id=row[0],
+                employee_id=row[1],
+                shift_date=date.fromisoformat(row[2]),
+                start_minute=int(row[3]),
+                end_minute=int(row[4]),
+                break_minutes=int(row[5]),
+                note=row[6],
+                confirmed=bool(row[7]),
+            )
+            for row in rows
+        ]
+
+    def save_shift(self, shift: Shift) -> Shift:
+        if shift.shift_id is None:
+            cursor = self.connection.execute(
+                """
+                INSERT INTO shifts
+                (employee_id, shift_date, start_minute, end_minute, break_minutes, note, confirmed)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    shift.employee_id,
+                    shift.shift_date.isoformat(),
+                    int(shift.start_minute),
+                    int(shift.end_minute),
+                    int(shift.break_minutes),
+                    shift.note,
+                    int(shift.confirmed),
+                ),
+            )
+            self.connection.commit()
+            shift.shift_id = cursor.lastrowid
+            return shift
+
+        self.connection.execute(
+            """
+            UPDATE shifts
+            SET shift_date=?, start_minute=?, end_minute=?, break_minutes=?, note=?, confirmed=?
+            WHERE id=? AND employee_id=?
+            """,
+            (
+                shift.shift_date.isoformat(),
+                int(shift.start_minute),
+                int(shift.end_minute),
+                int(shift.break_minutes),
+                shift.note,
+                int(shift.confirmed),
+                int(shift.shift_id),
+                shift.employee_id,
+            ),
+        )
+        self.connection.commit()
+        return shift
+
+    def delete_shift(self, employee_id: str, shift_id: int) -> None:
+        self.connection.execute(
+            """
+            DELETE FROM shifts
+            WHERE id = ? AND employee_id = ?
+            """,
+            (int(shift_id), employee_id),
+        )
+        self.connection.commit()
     # ------------------------------------------------------------------
     # Users / Authentication
     # ------------------------------------------------------------------
