@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ログイン | Salary Calculator</title>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; background:#0b1220; color:#e5e7eb; }
+    .box { max-width: 420px; margin: 10vh auto; background:#111827; padding:24px; border-radius:12px; border:1px solid #1f2937; }
+    h1 { margin:0 0 16px; font-size:20px; }
+    label { display:block; margin:12px 0 6px; color:#cbd5e1; }
+    input { width:100%; padding:10px; border-radius:8px; border:1px solid #334155; background:#0b1220; color:#e5e7eb; }
+    button { margin-top:16px; width:100%; padding:10px; border-radius:8px; border:0; background:#2563eb; color:white; font-weight:700; }
+    .err { margin-top:12px; color:#fca5a5; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>ログイン</h1>
+    <form method="post" action="/login-ui">
+      <label>ユーザー名</label>
+      <input name="username" autocomplete="username" required />
+      <label>パスワード</label>
+      <input name="password" type="password" autocomplete="current-password" required />
+      <button type="submit">ログイン</button>
+    </form>
+    {% if error %}
+      <div class="err">{{ error }}</div>
+    {% endif %}
+  </div>
+</body>
+</html>
