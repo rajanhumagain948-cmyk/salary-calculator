@@ -127,6 +127,18 @@ def me(request: Request):
         "employee_id": user.employee_id,
     }
 
+@app.get("/employees")
+def employees(request: Request):
+    user = require_user(request)
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="admin only")
+
+    return [
+        {"employee_id": e.employee_id, "name": e.name}
+        for e in repo.employees()
+    ]
+
+
 from services.time_service import parse_date  # 既存利用（未使用なら後で整理）
 
 
