@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
 
@@ -13,7 +13,7 @@ type Me = {
 type Shift = {
   shift_id: number | null;
   employee_id: string;
-  shift_date: string;
+  shift_date: string; // YYYY-MM-DD
   start_minute: number;
   end_minute: number;
   break_minutes: number;
@@ -22,32 +22,62 @@ type Shift = {
 };
 
 function fmtMinute(m: number) {
-  const h = Math.floor(m / 60)
-    .toString()
-    .padStart(2, "0");
+  const h = Math.floor(m / 60).toString().padStart(2, "0");
   const mm = (m % 60).toString().padStart(2, "0");
   return `${h}:${mm}`;
 }
-
+function normText(s: string) {
+  return (s ?? "")
+    .normalize("NFKC")                 // 全角英数→半角など
+    .replace(/[：]/g, ":")
+    .replace(/[／]/g, "/")
+    .replace(/[ー－―–—−]/g, "-")
+    .trim();
+}
+function normDateLike(s: string) {
+  return normText(s).replace(/\//g, "-");
+}
 function toMinute(hhmm: string) {
-  const [h, m] = hhmm.split(":").map((x) => parseInt(x, 10));
-  return h * 60 + m;
+  const t = normText(hhmm); // 全角「：」などを正規化
+  const [h, m] = t.split(":").map((x) => parseInt(x, 10));
+  return (h || 0) * 60 + (m || 0);
 }
 
 export default function ShiftsPage() {
   const [me, setMe] = useState<Me | null>(null);
+
   const [yearMonth, setYearMonth] = useState("2026-08");
   const [employeeId, setEmployeeId] = useState(""); // adminのみ使用
+
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [error, setError] = useState("");
 
-  // --- 追加フォーム（管理者用） ---
-  const [newDate, setNewDate] = useState("2026-08-29"); // YYYY-MM-DD
+  const isAdmin = me?.role === "admin";
+
+  // --- 追加/更新フォーム（管理者用） ---
+  const [editingShiftId, setEditingShiftId] = useState<number | null>(null);
+  const [newDate, setNewDate] = useState("2026-08-29");
   const [newStart, setNewStart] = useState("09:00");
   const [newEnd, setNewEnd] = useState("18:00");
   const [newBreak, setNewBreak] = useState(60);
   const [newNote, setNewNote] = useState("web-ui");
   const [newConfirmed, setNewConfirmed] = useState(true);
+
+  const canLoad = useMemo(() => {
+    if (!me) return false;
+    if (me.role === "employee") return true;
+    return employeeId.trim().length > 0;
+  }, [me, employeeId]);
+
+  function resetForm() {
+    setEditingShiftId(null);
+    setNewDate(`${yearMonth}-01`);
+    setNewStart("09:00");
+    setNewEnd("18:00");
+    setNewBreak(60);
+    setNewNote("");
+    setNewConfirmed(true);
+  }
 
   async function loadMe() {
     setError("");
@@ -64,15 +94,27 @@ export default function ShiftsPage() {
     setError("");
     setShifts([]);
 
-    // adminのみ employee_id をクエリに付ける
-    const params =
-      me?.role === "admin" && employeeId
-        ? `?employee_id=${encodeURIComponent(employeeId)}`
-        : "";
+    if (!me) {
+      setError("未ログインです。");
+      return;
+    }
 
-    const res = await fetch(`${API_BASE}/shifts/${yearMonth}${params}`, {
-      credentials: "include",
-    });
+    const ym = normDateLike(yearMonth);
+const empId = normText(employeeId);
+
+const params =
+  me.role === "admin"
+    ? `?employee_id=${encodeURIComponent(empId)}`
+    : "";
+
+if (me.role === "admin" && !empId) {
+  setError("管理者は employee_id を入力してください（例: W250651）");
+  return;
+}
+
+const res = await fetch(`${API_BASE}/shifts/${ym}${params}`, {
+  credentials: "include",
+});
 
     if (!res.ok) {
       setError(`取得失敗: ${res.status}`);
@@ -82,24 +124,16 @@ export default function ShiftsPage() {
     setShifts(await res.json());
   }
 
-  async function addShift() {
+  async function upsertShift() {
     setError("");
 
-    if (!me) {
-      setError("未ログインです。");
-      return;
-    }
-    if (me.role !== "admin") {
-      setError("管理者のみ追加できます。");
-      return;
-    }
-    if (!employeeId) {
-      setError("管理者は employee_id を入力してください（例: W250651）");
-      return;
-    }
+    if (!me) return setError("未ログインです。");
+    if (me.role !== "admin") return setError("管理者のみ追加/更新できます。");
+    if (!employeeId.trim())
+      return setError("管理者は employee_id を入力してください（例: W250651）");
 
     const body = new URLSearchParams({
-      employee_id: employeeId,
+      employee_id: employeeId.trim(),
       shift_date: newDate,
       start_minute: String(toMinute(newStart)),
       end_minute: String(toMinute(newEnd)),
@@ -107,6 +141,8 @@ export default function ShiftsPage() {
       note: newNote,
       confirmed: newConfirmed ? "1" : "0",
     });
+
+    if (editingShiftId !== null) body.set("shift_id", String(editingShiftId));
 
     const res = await fetch(`${API_BASE}/shifts`, {
       method: "POST",
@@ -116,11 +152,55 @@ export default function ShiftsPage() {
     });
 
     if (!res.ok) {
-      setError(`追加失敗: ${res.status}`);
+      setError(`保存失敗: ${res.status}`);
       return;
     }
 
     await loadShifts();
+    resetForm();
+  }
+
+  async function deleteShift(shiftId: number) {
+    setError("");
+
+    if (!me) return setError("未ログインです。");
+    if (me.role !== "admin") return setError("管理者のみ削除できます。");
+    if (!employeeId.trim())
+      return setError("管理者は employee_id を入力してください（例: W250651）");
+    if (!confirm(`シフトID=${shiftId} を削除しますか？`)) return;
+
+    const body = new URLSearchParams({
+      employee_id: employeeId.trim(),
+      shift_id: String(shiftId),
+    });
+
+    const res = await fetch(`${API_BASE}/shifts/delete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+      credentials: "include",
+    });
+
+    if (!res.ok) {
+      setError(`削除失敗: ${res.status}`);
+      return;
+    }
+
+    await loadShifts();
+    if (editingShiftId === shiftId) resetForm();
+  }
+
+  function startEdit(s: Shift) {
+    if (!isAdmin) return;
+    if (s.shift_id == null) return;
+
+    setEditingShiftId(s.shift_id);
+    setNewDate(s.shift_date);
+    setNewStart(fmtMinute(s.start_minute));
+    setNewEnd(fmtMinute(s.end_minute));
+    setNewBreak(s.break_minutes);
+    setNewNote(s.note);
+    setNewConfirmed(s.confirmed);
   }
 
   useEffect(() => {
@@ -162,26 +242,33 @@ export default function ShiftsPage() {
         </label>
 
         {me?.role === "admin" && (
-  <label>
-    employee_id（管理者のみ）
-    <input
-      value={employeeId}
-      onChange={(e) => setEmployeeId(e.target.value)}
-      placeholder="W250651 など"
-      style={{ width: 180, padding: 8, display: "block" }}
-    />
-  </label>
-)}
+          <label>
+            employee_id（管理者のみ）
+            <input
+              value={employeeId}
+              onChange={(e) => setEmployeeId(e.target.value)}
+              placeholder="W250651 など"
+              style={{ width: 180, padding: 8, display: "block" }}
+            />
+          </label>
+        )}
 
         <button
           onClick={loadShifts}
+          disabled={!canLoad}
           style={{ padding: "10px 14px", fontWeight: 700 }}
         >
           取得
         </button>
+
+        {isAdmin && (
+          <button onClick={resetForm} style={{ padding: "10px 14px" }}>
+            フォームクリア
+          </button>
+        )}
       </div>
 
-      {me?.role === "admin" && (
+      {isAdmin && (
         <section
           style={{
             marginTop: 18,
@@ -191,7 +278,9 @@ export default function ShiftsPage() {
           }}
         >
           <h2 style={{ margin: "0 0 10px", fontSize: 16 }}>
-            シフト追加（管理者）
+            {editingShiftId
+              ? `シフト更新（ID: ${editingShiftId}）`
+              : "シフト追加（管理者）"}
           </h2>
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -226,7 +315,9 @@ export default function ShiftsPage() {
               休憩(分)
               <input
                 value={newBreak}
-                onChange={(e) => setNewBreak(parseInt(e.target.value || "0", 10))}
+                onChange={(e) =>
+                  setNewBreak(parseInt(e.target.value || "0", 10))
+                }
                 style={{ width: 100, padding: 8, display: "block" }}
               />
             </label>
@@ -250,16 +341,12 @@ export default function ShiftsPage() {
             </label>
 
             <button
-              onClick={addShift}
+              onClick={upsertShift}
               style={{ padding: "10px 14px", fontWeight: 700 }}
             >
-              追加
+              {editingShiftId ? "更新" : "追加"}
             </button>
           </div>
-
-          <p style={{ marginTop: 8, color: "#666" }}>
-            ※ employee_id を入力してから追加してください（例: W250651）
-          </p>
         </section>
       )}
 
@@ -271,16 +358,37 @@ export default function ShiftsPage() {
             {["日付", "開始", "終了", "休憩", "メモ", "確定"].map((h) => (
               <th
                 key={h}
-                style={{ textAlign: "left", borderBottom: "1px solid #ddd", padding: 8 }}
+                style={{
+                  textAlign: "left",
+                  borderBottom: "1px solid #ddd",
+                  padding: 8,
+                }}
               >
                 {h}
               </th>
             ))}
+            {isAdmin && (
+              <th
+                style={{
+                  textAlign: "left",
+                  borderBottom: "1px solid #ddd",
+                  padding: 8,
+                }}
+              >
+                操作
+              </th>
+            )}
           </tr>
         </thead>
+
         <tbody>
           {shifts.map((s) => (
-            <tr key={s.shift_id ?? `${s.employee_id}-${s.shift_date}`}>
+            <tr
+              key={s.shift_id ?? `${s.employee_id}-${s.shift_date}`}
+              onClick={() => startEdit(s)}
+              style={{ cursor: isAdmin ? "pointer" : "default" }}
+              title={isAdmin ? "クリックで編集フォームに反映" : ""}
+            >
               <td style={{ padding: 8, borderBottom: "1px solid #eee" }}>
                 {s.shift_date}
               </td>
@@ -299,6 +407,22 @@ export default function ShiftsPage() {
               <td style={{ padding: 8, borderBottom: "1px solid #eee" }}>
                 {s.confirmed ? "○" : ""}
               </td>
+
+              {isAdmin && (
+                <td style={{ padding: 8, borderBottom: "1px solid #eee" }}>
+                  {s.shift_id != null && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteShift(s.shift_id as number);
+                      }}
+                      style={{ padding: "6px 10px" }}
+                    >
+                      削除
+                    </button>
+                  )}
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
