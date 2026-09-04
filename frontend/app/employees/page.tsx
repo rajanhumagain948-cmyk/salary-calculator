@@ -66,6 +66,18 @@ export default function EmployeesPage() {
   const [message, setMessage] = useState("");
   const [editForm, setEditForm] = useState<Employee | null>(null);
   const [updating, setUpdating] = useState(false);
+  const [search, setSearch] = useState("");
+  const [showCreateForm, setShowCreateForm] = useState(false);
+
+  const filteredEmployees = employees.filter((employee) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+
+    return (
+      employee.employee_id.toLowerCase().includes(q) ||
+      employee.name.toLowerCase().includes(q)
+    );
+  });
 
   async function loadEmployees() {
     setError("");
@@ -176,6 +188,7 @@ export default function EmployeesPage() {
       const result = await res.json();
 
       setForm({ ...emptyEmployee });
+      setShowCreateForm(false);
       setSelected(result.employee);
       setMessage("従業員を登録しました。");
       await loadEmployees();
@@ -277,19 +290,72 @@ export default function EmployeesPage() {
         fontFamily: "system-ui",
       }}
     >
-      <h1>従業員管理</h1>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 20,
+          marginBottom: 26,
+        }}
+      >
+        <div>
+          <div
+            style={{
+              color: "#8390ff",
+              fontSize: 11,
+              fontWeight: 800,
+              letterSpacing: "0.12em",
+            }}
+          >
+            従業員マスター
+          </div>
+
+          <h1 style={{ margin: "6px 0 5px", fontSize: 30 }}>
+            従業員管理
+          </h1>
+
+          <div style={{ color: "#8fa6bf", fontSize: 13 }}>
+            登録従業員 {employees.length} 人
+          </div>
+        </div>
+
+        <button
+          onClick={() => setShowCreateForm((value) => !value)}
+          style={{
+            padding: "11px 17px",
+            border: "1px solid rgba(109,124,255,.4)",
+            borderRadius: 11,
+            color: "#fff",
+            background: showCreateForm
+              ? "rgba(109,124,255,.12)"
+              : "linear-gradient(135deg, #6d7cff, #5164e8)",
+            fontWeight: 750,
+            cursor: "pointer",
+            boxShadow: showCreateForm
+              ? "none"
+              : "0 10px 26px rgba(81,100,232,.22)",
+          }}
+        >
+          {showCreateForm ? "× 閉じる" : "＋ 従業員を追加"}
+        </button>
+      </div>
 
       {error && <p style={{ color: "#ff6b6b" }}>{error}</p>}
 
+      {showCreateForm && (
       <section
         style={{
-          border: "1px solid #555",
-          borderRadius: 8,
-          padding: 20,
+          border: "1px solid rgba(109,124,255,.22)",
+          borderRadius: 16,
+          padding: 22,
           marginBottom: 24,
+          background:
+            "linear-gradient(145deg, rgba(17,33,54,.86), rgba(10,23,40,.72))",
+          boxShadow: "0 18px 50px rgba(0,0,0,.16)",
         }}
       >
-        <h2 style={{ marginTop: 0 }}>新規従業員登録</h2>
+        <h2 style={{ marginTop: 0 }}>新しい従業員を登録</h2>
 
         <div
           style={{
@@ -436,6 +502,7 @@ export default function EmployeesPage() {
           <p style={{ color: "#5ee28a", marginBottom: 0 }}>{message}</p>
         )}
       </section>
+      )}
 
       <div
         style={{
@@ -447,41 +514,142 @@ export default function EmployeesPage() {
         <section>
           <h2>従業員一覧</h2>
 
-          <button onClick={loadEmployees} style={{ padding: "8px 12px" }}>
-            再取得
-          </button>
+          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="社員番号・氏名で検索"
+              style={{
+                flex: 1,
+                minWidth: 0,
+                padding: "9px 11px",
+              }}
+            />
+
+            <button onClick={loadEmployees} style={{ padding: "8px 12px" }}>
+              再取得
+            </button>
+          </div>
+
+          <div
+            style={{
+              color: "#8fa6bf",
+              fontSize: 12,
+              marginBottom: 8,
+            }}
+          >
+            {filteredEmployees.length} / {employees.length} 人
+          </div>
 
           {loading ? (
             <p>読み込み中...</p>
           ) : (
-            <div style={{ marginTop: 12 }}>
-              {employees.map((employee) => (
+            <div
+              style={{
+                maxHeight: 520,
+                overflowY: "auto",
+                paddingRight: 5,
+              }}
+            >
+              {filteredEmployees.map((employee) => (
                 <button
                   key={employee.employee_id}
-                  onClick={() => selectEmployee(employee.employee_id)}
+                  onClick={() => {
+                    if (selected?.employee_id === employee.employee_id) {
+                      setSelected(null);
+                      setEditForm(null);
+                    } else {
+                      selectEmployee(employee.employee_id);
+                    }
+                  }}
                   style={{
-                    display: "block",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 11,
                     width: "100%",
-                    padding: 12,
-                    marginBottom: 8,
+                    padding: "10px 11px",
+                    marginBottom: 7,
                     textAlign: "left",
                     cursor: "pointer",
-                    border: "1px solid #555",
-                    borderRadius: 6,
+                    border:
+                      selected?.employee_id === employee.employee_id
+                        ? "1px solid rgba(109,124,255,.48)"
+                        : "1px solid rgba(148,180,216,.12)",
+                    borderRadius: 11,
                     background:
                       selected?.employee_id === employee.employee_id
-                        ? "#24405c"
-                        : "#181818",
+                        ? "linear-gradient(90deg, rgba(109,124,255,.22), rgba(56,217,245,.08))"
+                        : "rgba(14,27,46,.58)",
                     color: "#fff",
                   }}
                 >
-                  <strong>{employee.employee_id}</strong>
-                  <br />
-                  {employee.name}
+                  <span
+                    style={{
+                      width: 36,
+                      height: 36,
+                      display: "grid",
+                      placeItems: "center",
+                      flex: "0 0 auto",
+                      borderRadius: 10,
+                      color: "#dce2ff",
+                      fontWeight: 800,
+                      background:
+                        "linear-gradient(135deg, rgba(109,124,255,.36), rgba(56,217,245,.18))",
+                    }}
+                  >
+                    {(employee.name.trim()[0] || "?").toUpperCase()}
+                  </span>
+
+                  <span style={{ minWidth: 0 }}>
+                    <strong
+                      style={{
+                        display: "block",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        fontSize: 13,
+                      }}
+                    >
+                      {employee.name}
+                    </strong>
+
+                    <span
+                      style={{
+                        display: "block",
+                        marginTop: 3,
+                        color: "#7f96ad",
+                        fontSize: 10,
+                        letterSpacing: ".04em",
+                      }}
+                    >
+                      {employee.employee_id}
+                    </span>
+                  </span>
+
+                  <span
+                    style={{
+                      marginLeft: "auto",
+                      color:
+                        selected?.employee_id === employee.employee_id
+                          ? "#8fe9f7"
+                          : "#546c84",
+                    }}
+                  >
+                    ›
+                  </span>
                 </button>
               ))}
 
-              {employees.length === 0 && <p>従業員が登録されていません。</p>}
+              {employees.length === 0 && (
+                <p>従業員が登録されていません。</p>
+              )}
+
+              {employees.length > 0 && filteredEmployees.length === 0 && (
+                <p style={{ color: "#8fa6bf" }}>
+                  検索条件に一致する従業員はいません。
+                </p>
+              )}
             </div>
           )}
         </section>
@@ -499,9 +667,92 @@ export default function EmployeesPage() {
                 padding: 20,
               }}
             >
-              <p>
-                <strong>社員番号:</strong> {editForm.employee_id}
-              </p>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 15,
+                  paddingBottom: 18,
+                  marginBottom: 20,
+                  borderBottom: "1px solid rgba(148,180,216,.12)",
+                }}
+              >
+                <div
+                  style={{
+                    width: 52,
+                    height: 52,
+                    display: "grid",
+                    placeItems: "center",
+                    flex: "0 0 auto",
+                    borderRadius: 15,
+                    color: "#fff",
+                    fontSize: 20,
+                    fontWeight: 850,
+                    background:
+                      "linear-gradient(135deg, #6475f2, #35bfd9)",
+                    boxShadow:
+                      "0 10px 28px rgba(83,104,230,.22)",
+                  }}
+                >
+                  {(editForm.name.trim()[0] || "?").toUpperCase()}
+                </div>
+
+                <div style={{ minWidth: 0 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 9,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <strong
+                      style={{
+                        fontSize: 19,
+                        letterSpacing: "-.02em",
+                      }}
+                    >
+                      {editForm.name || "氏名未入力"}
+                    </strong>
+
+                    <span
+                      style={{
+                        padding: "4px 8px",
+                        borderRadius: 999,
+                        color: editForm.termination_date
+                          ? "#ff9aa6"
+                          : "#65e6b5",
+                        background: editForm.termination_date
+                          ? "rgba(255,107,122,.09)"
+                          : "rgba(69,224,168,.09)",
+                        border: editForm.termination_date
+                          ? "1px solid rgba(255,107,122,.2)"
+                          : "1px solid rgba(69,224,168,.18)",
+                        fontSize: 9,
+                        fontWeight: 750,
+                      }}
+                    >
+                      {editForm.termination_date ? "退職" : "在籍中"}
+                    </span>
+                  </div>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 10,
+                      marginTop: 5,
+                      color: "#8298ae",
+                      fontSize: 11,
+                    }}
+                  >
+                    <span>{editForm.employee_id}</span>
+                    <span>•</span>
+                    <span>{editForm.employment_type}</span>
+                    <span>•</span>
+                    <span>{editForm.pay_type}</span>
+                  </div>
+                </div>
+              </div>
 
               <div
                 style={{

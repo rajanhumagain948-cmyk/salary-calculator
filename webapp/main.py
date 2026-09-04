@@ -9,6 +9,7 @@ from pathlib import Path
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import date
 from decimal import Decimal
+from models.company import Company
 from models.employee import Employee
 from models.shifts import Shift
 
@@ -128,6 +129,50 @@ def me(request: Request):
         "role": user.role,
         "employee_id": user.employee_id,
     }
+
+@app.get("/company")
+def company_info(request: Request):
+    require_user(request)
+    company = repo.company()
+
+    return {
+        "name": company.name,
+        "address": company.address,
+        "representative": company.representative,
+    }
+
+
+@app.put("/company")
+def update_company(
+    request: Request,
+    name: str = Form(...),
+    address: str = Form(""),
+    representative: str = Form(""),
+):
+    user = require_user(request)
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="admin only")
+
+    name = name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="company name is required")
+
+    company = Company(
+        name=name,
+        address=address.strip(),
+        representative=representative.strip(),
+    )
+    repo.save_company(company)
+
+    return {
+        "ok": True,
+        "company": {
+            "name": company.name,
+            "address": company.address,
+            "representative": company.representative,
+        },
+    }
+
 
 @app.get("/employees")
 def employees(request: Request):
