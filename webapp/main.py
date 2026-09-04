@@ -183,34 +183,28 @@ def employee_detail(employee_id: str, request: Request):
     return employee_to_dict(employee)
 
 
-@app.post("/employees")
-def save_employee(
-    request: Request,
-    employee_id: str = Form(...),
-    name: str = Form(...),
-    employment_type: str = Form(...),
-    hire_date: str = Form(...),
-    pay_type: str = Form(...),
-    hourly_rate: str = Form("0"),
-    monthly_salary: str = Form("0"),
-    weekly_hours: str = Form("0"),
-    weekly_days: int = Form(0),
-    contract_months: str = Form(""),
-    workplace_size: int = Form(0),
-    is_student: int = Form(0),
-    dependents: int = Form(0),
-    tax_category: str = Form("甲"),
-    birth_date: str = Form(""),
-    termination_date: str = Form(""),
-    prefecture: str = Form("東京都"),
-    resident_tax_monthly: str = Form("0"),
-    resident_tax_method: str = Form("特別徴収"),
-    standard_monthly_remuneration: str = Form("0"),
-):
-    user = require_user(request)
-    if user.role != "admin":
-        raise HTTPException(status_code=403, detail="admin only")
-
+def build_employee(
+    employee_id: str,
+    name: str,
+    employment_type: str,
+    hire_date: str,
+    pay_type: str,
+    hourly_rate: str,
+    monthly_salary: str,
+    weekly_hours: str,
+    weekly_days: int,
+    contract_months: str,
+    workplace_size: int,
+    is_student: int,
+    dependents: int,
+    tax_category: str,
+    birth_date: str,
+    termination_date: str,
+    prefecture: str,
+    resident_tax_monthly: str,
+    resident_tax_method: str,
+    standard_monthly_remuneration: str,
+) -> Employee:
     employee_id = employee_id.strip()
     name = name.strip()
 
@@ -218,12 +212,6 @@ def save_employee(
         raise HTTPException(
             status_code=400,
             detail="employee_id and name are required",
-        )
-
-    if any(e.employee_id == employee_id for e in repo.employees()):
-        raise HTTPException(
-            status_code=409,
-            detail="employee_id already exists",
         )
 
     if employment_type not in ("正社員", "契約社員", "パート", "アルバイト"):
@@ -239,7 +227,7 @@ def save_employee(
         raise HTTPException(status_code=400, detail="invalid resident_tax_method")
 
     try:
-        employee = Employee(
+        return Employee(
             employee_id=employee_id,
             name=name,
             employment_type=employment_type,
@@ -269,6 +257,127 @@ def save_employee(
         )
     except (ValueError, TypeError) as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@app.post("/employees")
+def save_employee(
+    request: Request,
+    employee_id: str = Form(...),
+    name: str = Form(...),
+    employment_type: str = Form(...),
+    hire_date: str = Form(...),
+    pay_type: str = Form(...),
+    hourly_rate: str = Form("0"),
+    monthly_salary: str = Form("0"),
+    weekly_hours: str = Form("0"),
+    weekly_days: int = Form(0),
+    contract_months: str = Form(""),
+    workplace_size: int = Form(0),
+    is_student: int = Form(0),
+    dependents: int = Form(0),
+    tax_category: str = Form("甲"),
+    birth_date: str = Form(""),
+    termination_date: str = Form(""),
+    prefecture: str = Form("東京都"),
+    resident_tax_monthly: str = Form("0"),
+    resident_tax_method: str = Form("特別徴収"),
+    standard_monthly_remuneration: str = Form("0"),
+):
+    user = require_user(request)
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="admin only")
+
+    employee_id = employee_id.strip()
+
+    if any(e.employee_id == employee_id for e in repo.employees()):
+        raise HTTPException(
+            status_code=409,
+            detail="employee_id already exists",
+        )
+
+    employee = build_employee(
+        employee_id=employee_id,
+        name=name,
+        employment_type=employment_type,
+        hire_date=hire_date,
+        pay_type=pay_type,
+        hourly_rate=hourly_rate,
+        monthly_salary=monthly_salary,
+        weekly_hours=weekly_hours,
+        weekly_days=weekly_days,
+        contract_months=contract_months,
+        workplace_size=workplace_size,
+        is_student=is_student,
+        dependents=dependents,
+        tax_category=tax_category,
+        birth_date=birth_date,
+        termination_date=termination_date,
+        prefecture=prefecture,
+        resident_tax_monthly=resident_tax_monthly,
+        resident_tax_method=resident_tax_method,
+        standard_monthly_remuneration=standard_monthly_remuneration,
+    )
+
+    repo.save_employee(employee)
+
+    return {"ok": True, "employee": employee_to_dict(employee)}
+
+
+@app.put("/employees/{employee_id}")
+def update_employee(
+    employee_id: str,
+    request: Request,
+    name: str = Form(...),
+    employment_type: str = Form(...),
+    hire_date: str = Form(...),
+    pay_type: str = Form(...),
+    hourly_rate: str = Form("0"),
+    monthly_salary: str = Form("0"),
+    weekly_hours: str = Form("0"),
+    weekly_days: int = Form(0),
+    contract_months: str = Form(""),
+    workplace_size: int = Form(0),
+    is_student: int = Form(0),
+    dependents: int = Form(0),
+    tax_category: str = Form("甲"),
+    birth_date: str = Form(""),
+    termination_date: str = Form(""),
+    prefecture: str = Form("東京都"),
+    resident_tax_monthly: str = Form("0"),
+    resident_tax_method: str = Form("特別徴収"),
+    standard_monthly_remuneration: str = Form("0"),
+):
+    user = require_user(request)
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="admin only")
+
+    employee_id = employee_id.strip()
+
+    if not any(e.employee_id == employee_id for e in repo.employees()):
+        raise HTTPException(status_code=404, detail="employee not found")
+
+    employee = build_employee(
+        employee_id=employee_id,
+        name=name,
+        employment_type=employment_type,
+        hire_date=hire_date,
+        pay_type=pay_type,
+        hourly_rate=hourly_rate,
+        monthly_salary=monthly_salary,
+        weekly_hours=weekly_hours,
+        weekly_days=weekly_days,
+        contract_months=contract_months,
+        workplace_size=workplace_size,
+        is_student=is_student,
+        dependents=dependents,
+        tax_category=tax_category,
+        birth_date=birth_date,
+        termination_date=termination_date,
+        prefecture=prefecture,
+        resident_tax_monthly=resident_tax_monthly,
+        resident_tax_method=resident_tax_method,
+        standard_monthly_remuneration=standard_monthly_remuneration,
+    )
 
     repo.save_employee(employee)
 

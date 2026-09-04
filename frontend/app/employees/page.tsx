@@ -64,6 +64,8 @@ export default function EmployeesPage() {
   const [form, setForm] = useState<Employee>({ ...emptyEmployee });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [editForm, setEditForm] = useState<Employee | null>(null);
+  const [updating, setUpdating] = useState(false);
 
   async function loadEmployees() {
     setError("");
@@ -101,7 +103,9 @@ export default function EmployeesPage() {
         return;
       }
 
-      setSelected(await res.json());
+      const employee: Employee = await res.json();
+      setSelected(employee);
+      setEditForm({ ...employee });
     } catch {
       setError("従業員詳細を取得できませんでした。");
     }
@@ -179,6 +183,84 @@ export default function EmployeesPage() {
       setError("従業員の登録中に通信エラーが発生しました。");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function updateEmployee() {
+    if (!editForm) return;
+
+    setError("");
+    setMessage("");
+
+    if (!editForm.name.trim() || !editForm.hire_date) {
+      setError("氏名・入社日は必須です。");
+      return;
+    }
+
+    setUpdating(true);
+
+    try {
+      const data = new FormData();
+
+      data.append("name", editForm.name.trim());
+      data.append("employment_type", editForm.employment_type);
+      data.append("hire_date", editForm.hire_date);
+      data.append("pay_type", editForm.pay_type);
+      data.append("hourly_rate", editForm.hourly_rate || "0");
+      data.append("monthly_salary", editForm.monthly_salary || "0");
+      data.append("weekly_hours", editForm.weekly_hours || "0");
+      data.append("weekly_days", String(editForm.weekly_days));
+      data.append(
+        "contract_months",
+        editForm.contract_months === null
+          ? ""
+          : String(editForm.contract_months)
+      );
+      data.append("workplace_size", String(editForm.workplace_size));
+      data.append("is_student", editForm.is_student ? "1" : "0");
+      data.append("dependents", String(editForm.dependents));
+      data.append("tax_category", editForm.tax_category);
+      data.append("birth_date", editForm.birth_date ?? "");
+      data.append("termination_date", editForm.termination_date ?? "");
+      data.append("prefecture", editForm.prefecture);
+      data.append(
+        "resident_tax_monthly",
+        editForm.resident_tax_monthly || "0"
+      );
+      data.append("resident_tax_method", editForm.resident_tax_method);
+      data.append(
+        "standard_monthly_remuneration",
+        editForm.standard_monthly_remuneration || "0"
+      );
+
+      const res = await fetch(
+        `${API_BASE}/employees/${encodeURIComponent(editForm.employee_id)}`,
+        {
+          method: "PUT",
+          credentials: "include",
+          body: data,
+        }
+      );
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        setError(
+          body?.detail
+            ? `更新に失敗しました: ${body.detail}`
+            : `更新に失敗しました: ${res.status}`
+        );
+        return;
+      }
+
+      const result = await res.json();
+      setSelected(result.employee);
+      setEditForm({ ...result.employee });
+      setMessage("従業員情報を更新しました。");
+      await loadEmployees();
+    } catch {
+      setError("従業員情報の更新中に通信エラーが発生しました。");
+    } finally {
+      setUpdating(false);
     }
   }
 
@@ -407,7 +489,7 @@ export default function EmployeesPage() {
         <section>
           <h2>従業員詳細</h2>
 
-          {!selected ? (
+          {!selected || !editForm ? (
             <p>左の一覧から従業員を選択してください。</p>
           ) : (
             <div
@@ -417,59 +499,327 @@ export default function EmployeesPage() {
                 padding: 20,
               }}
             >
-              <p><strong>社員番号:</strong> {selected.employee_id}</p>
-              <p><strong>氏名:</strong> {selected.name}</p>
-              <p><strong>雇用形態:</strong> {selected.employment_type}</p>
-              <p><strong>入社日:</strong> {selected.hire_date}</p>
-              <p><strong>給与形態:</strong> {selected.pay_type}</p>
-
               <p>
-                <strong>時給:</strong>{" "}
-                {Number(selected.hourly_rate).toLocaleString()} 円
+                <strong>社員番号:</strong> {editForm.employee_id}
               </p>
 
-              <p>
-                <strong>月給:</strong>{" "}
-                {Number(selected.monthly_salary).toLocaleString()} 円
-              </p>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
+                  gap: 12,
+                }}
+              >
+                <label>
+                  氏名 *
+                  <input
+                    value={editForm.name}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, name: e.target.value })
+                    }
+                    style={{ display: "block", width: "100%", padding: 8 }}
+                  />
+                </label>
 
-              <p><strong>週所定時間:</strong> {selected.weekly_hours} 時間</p>
-              <p><strong>週所定日数:</strong> {selected.weekly_days} 日</p>
-              <p><strong>扶養人数:</strong> {selected.dependents} 人</p>
-              <p><strong>税区分:</strong> {selected.tax_category}</p>
-              <p><strong>都道府県:</strong> {selected.prefecture}</p>
+                <label>
+                  雇用形態
+                  <select
+                    value={editForm.employment_type}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        employment_type: e.target.value,
+                      })
+                    }
+                    style={{ display: "block", width: "100%", padding: 8 }}
+                  >
+                    <option value="正社員">正社員</option>
+                    <option value="契約社員">契約社員</option>
+                    <option value="パート">パート</option>
+                    <option value="アルバイト">アルバイト</option>
+                  </select>
+                </label>
 
-              <p>
-                <strong>住民税:</strong>{" "}
-                {Number(selected.resident_tax_monthly).toLocaleString()} 円
-              </p>
+                <label>
+                  入社日 *
+                  <input
+                    type="date"
+                    value={editForm.hire_date}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, hire_date: e.target.value })
+                    }
+                    style={{ display: "block", width: "100%", padding: 8 }}
+                  />
+                </label>
 
-              <p>
-                <strong>住民税徴収:</strong> {selected.resident_tax_method}
-              </p>
+                <label>
+                  給与形態
+                  <select
+                    value={editForm.pay_type}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, pay_type: e.target.value })
+                    }
+                    style={{ display: "block", width: "100%", padding: 8 }}
+                  >
+                    <option value="月給">月給</option>
+                    <option value="時給">時給</option>
+                  </select>
+                </label>
 
-              <p>
-                <strong>標準報酬月額:</strong>{" "}
-                {Number(
-                  selected.standard_monthly_remuneration
-                ).toLocaleString()}{" "}
-                円
-              </p>
+                <label>
+                  時給（円）
+                  <input
+                    type="number"
+                    min="0"
+                    value={editForm.hourly_rate}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, hourly_rate: e.target.value })
+                    }
+                    style={{ display: "block", width: "100%", padding: 8 }}
+                  />
+                </label>
 
-              <p>
-                <strong>生年月日:</strong>{" "}
-                {selected.birth_date ?? "未登録"}
-              </p>
+                <label>
+                  月給（円）
+                  <input
+                    type="number"
+                    min="0"
+                    value={editForm.monthly_salary}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        monthly_salary: e.target.value,
+                      })
+                    }
+                    style={{ display: "block", width: "100%", padding: 8 }}
+                  />
+                </label>
 
-              <p>
-                <strong>退職日:</strong>{" "}
-                {selected.termination_date ?? "在籍中"}
-              </p>
+                <label>
+                  週所定時間
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={editForm.weekly_hours}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        weekly_hours: e.target.value,
+                      })
+                    }
+                    style={{ display: "block", width: "100%", padding: 8 }}
+                  />
+                </label>
 
-              <p>
-                <strong>学生:</strong>{" "}
-                {selected.is_student ? "はい" : "いいえ"}
-              </p>
+                <label>
+                  週所定日数
+                  <input
+                    type="number"
+                    min="0"
+                    max="7"
+                    value={editForm.weekly_days}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        weekly_days: Number(e.target.value),
+                      })
+                    }
+                    style={{ display: "block", width: "100%", padding: 8 }}
+                  />
+                </label>
+
+                <label>
+                  契約期間（月）
+                  <input
+                    type="number"
+                    min="0"
+                    value={editForm.contract_months ?? ""}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        contract_months:
+                          e.target.value === "" ? null : Number(e.target.value),
+                      })
+                    }
+                    style={{ display: "block", width: "100%", padding: 8 }}
+                  />
+                </label>
+
+                <label>
+                  事業所規模
+                  <input
+                    type="number"
+                    min="0"
+                    value={editForm.workplace_size}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        workplace_size: Number(e.target.value),
+                      })
+                    }
+                    style={{ display: "block", width: "100%", padding: 8 }}
+                  />
+                </label>
+
+                <label>
+                  扶養人数
+                  <input
+                    type="number"
+                    min="0"
+                    value={editForm.dependents}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        dependents: Number(e.target.value),
+                      })
+                    }
+                    style={{ display: "block", width: "100%", padding: 8 }}
+                  />
+                </label>
+
+                <label>
+                  税区分
+                  <select
+                    value={editForm.tax_category}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        tax_category: e.target.value,
+                      })
+                    }
+                    style={{ display: "block", width: "100%", padding: 8 }}
+                  >
+                    <option value="甲">甲</option>
+                    <option value="乙">乙</option>
+                  </select>
+                </label>
+
+                <label>
+                  生年月日
+                  <input
+                    type="date"
+                    value={editForm.birth_date ?? ""}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        birth_date: e.target.value || null,
+                      })
+                    }
+                    style={{ display: "block", width: "100%", padding: 8 }}
+                  />
+                </label>
+
+                <label>
+                  退職日
+                  <input
+                    type="date"
+                    value={editForm.termination_date ?? ""}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        termination_date: e.target.value || null,
+                      })
+                    }
+                    style={{ display: "block", width: "100%", padding: 8 }}
+                  />
+                </label>
+
+                <label>
+                  都道府県
+                  <input
+                    value={editForm.prefecture}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        prefecture: e.target.value,
+                      })
+                    }
+                    style={{ display: "block", width: "100%", padding: 8 }}
+                  />
+                </label>
+
+                <label>
+                  住民税（月額）
+                  <input
+                    type="number"
+                    min="0"
+                    value={editForm.resident_tax_monthly}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        resident_tax_monthly: e.target.value,
+                      })
+                    }
+                    style={{ display: "block", width: "100%", padding: 8 }}
+                  />
+                </label>
+
+                <label>
+                  住民税徴収
+                  <select
+                    value={editForm.resident_tax_method}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        resident_tax_method: e.target.value,
+                      })
+                    }
+                    style={{ display: "block", width: "100%", padding: 8 }}
+                  >
+                    <option value="特別徴収">特別徴収</option>
+                    <option value="普通徴収">普通徴収</option>
+                  </select>
+                </label>
+
+                <label>
+                  標準報酬月額
+                  <input
+                    type="number"
+                    min="0"
+                    value={editForm.standard_monthly_remuneration}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        standard_monthly_remuneration: e.target.value,
+                      })
+                    }
+                    style={{ display: "block", width: "100%", padding: 8 }}
+                  />
+                </label>
+
+                <label style={{ alignSelf: "end", paddingBottom: 8 }}>
+                  <input
+                    type="checkbox"
+                    checked={editForm.is_student}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        is_student: e.target.checked,
+                      })
+                    }
+                  />{" "}
+                  学生
+                </label>
+              </div>
+
+              <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
+                <button
+                  onClick={updateEmployee}
+                  disabled={updating}
+                  style={{ padding: "10px 18px", fontWeight: 700 }}
+                >
+                  {updating ? "更新中..." : "変更を保存"}
+                </button>
+
+                <button
+                  onClick={() => setEditForm({ ...selected })}
+                  disabled={updating}
+                  style={{ padding: "10px 18px" }}
+                >
+                  変更を戻す
+                </button>
+              </div>
             </div>
           )}
         </section>
