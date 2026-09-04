@@ -8,6 +8,8 @@ from services.auth_service import verify_password
 from pathlib import Path
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import date
+from decimal import Decimal
+from models.employee import Employee
 from models.shifts import Shift
 
 app = FastAPI(title="Salary Calculator Web")
@@ -137,6 +139,140 @@ def employees(request: Request):
         {"employee_id": e.employee_id, "name": e.name}
         for e in repo.employees()
     ]
+
+
+def employee_to_dict(e: Employee):
+    return {
+        "employee_id": e.employee_id,
+        "name": e.name,
+        "employment_type": e.employment_type,
+        "hire_date": e.hire_date.isoformat(),
+        "pay_type": e.pay_type,
+        "hourly_rate": str(e.hourly_rate),
+        "monthly_salary": str(e.monthly_salary),
+        "weekly_hours": str(e.weekly_hours),
+        "weekly_days": e.weekly_days,
+        "contract_months": e.contract_months,
+        "workplace_size": e.workplace_size,
+        "is_student": e.is_student,
+        "dependents": e.dependents,
+        "tax_category": e.tax_category,
+        "birth_date": e.birth_date.isoformat() if e.birth_date else None,
+        "termination_date": e.termination_date.isoformat() if e.termination_date else None,
+        "prefecture": e.prefecture,
+        "resident_tax_monthly": str(e.resident_tax_monthly),
+        "resident_tax_method": e.resident_tax_method,
+        "standard_monthly_remuneration": str(e.standard_monthly_remuneration),
+    }
+
+
+@app.get("/employees/{employee_id}")
+def employee_detail(employee_id: str, request: Request):
+    user = require_user(request)
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="admin only")
+
+    employee = next(
+        (e for e in repo.employees() if e.employee_id == employee_id),
+        None,
+    )
+
+    if employee is None:
+        raise HTTPException(status_code=404, detail="employee not found")
+
+    return employee_to_dict(employee)
+
+
+@app.post("/employees")
+def save_employee(
+    request: Request,
+    employee_id: str = Form(...),
+    name: str = Form(...),
+    employment_type: str = Form(...),
+    hire_date: str = Form(...),
+    pay_type: str = Form(...),
+    hourly_rate: str = Form("0"),
+    monthly_salary: str = Form("0"),
+    weekly_hours: str = Form("0"),
+    weekly_days: int = Form(0),
+    contract_months: str = Form(""),
+    workplace_size: int = Form(0),
+    is_student: int = Form(0),
+    dependents: int = Form(0),
+    tax_category: str = Form("甲"),
+    birth_date: str = Form(""),
+    termination_date: str = Form(""),
+    prefecture: str = Form("東京都"),
+    resident_tax_monthly: str = Form("0"),
+    resident_tax_method: str = Form("特別徴収"),
+    standard_monthly_remuneration: str = Form("0"),
+):
+    user = require_user(request)
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="admin only")
+
+    employee_id = employee_id.strip()
+    name = name.strip()
+
+    if not employee_id or not name:
+        raise HTTPException(
+            status_code=400,
+            detail="employee_id and name are required",
+        )
+
+    if any(e.employee_id == employee_id for e in repo.employees()):
+        raise HTTPException(
+            status_code=409,
+            detail="employee_id already exists",
+        )
+
+    if employment_type not in ("正社員", "契約社員", "パート", "アルバイト"):
+        raise HTTPException(status_code=400, detail="invalid employment_type")
+
+    if pay_type not in ("時給", "月給"):
+        raise HTTPException(status_code=400, detail="invalid pay_type")
+
+    if tax_category not in ("甲", "乙"):
+        raise HTTPException(status_code=400, detail="invalid tax_category")
+
+    if resident_tax_method not in ("特別徴収", "普通徴収"):
+        raise HTTPException(status_code=400, detail="invalid resident_tax_method")
+
+    try:
+        employee = Employee(
+            employee_id=employee_id,
+            name=name,
+            employment_type=employment_type,
+            hire_date=date.fromisoformat(hire_date),
+            pay_type=pay_type,
+            hourly_rate=Decimal(hourly_rate or "0"),
+            monthly_salary=Decimal(monthly_salary or "0"),
+            weekly_hours=Decimal(weekly_hours or "0"),
+            weekly_days=int(weekly_days),
+            contract_months=int(contract_months) if contract_months else None,
+            workplace_size=int(workplace_size),
+            is_student=bool(int(is_student)),
+            dependents=int(dependents),
+            tax_category=tax_category,
+            birth_date=date.fromisoformat(birth_date) if birth_date else None,
+            termination_date=(
+                date.fromisoformat(termination_date)
+                if termination_date
+                else None
+            ),
+            prefecture=prefecture.strip() or "東京都",
+            resident_tax_monthly=Decimal(resident_tax_monthly or "0"),
+            resident_tax_method=resident_tax_method,
+            standard_monthly_remuneration=Decimal(
+                standard_monthly_remuneration or "0"
+            ),
+        )
+    except (ValueError, TypeError) as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+    repo.save_employee(employee)
+
+    return {"ok": True, "employee": employee_to_dict(employee)}
 
 
 from services.time_service import parse_date  # 既存利用（未使用なら後で整理）
