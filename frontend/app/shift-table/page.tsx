@@ -47,6 +47,17 @@ function weekdayJP(d: Date) {
   return ["日", "月", "火", "水", "木", "金", "土"][d.getDay()];
 }
 
+function moveMonth(ym: string, amount: number) {
+  const [year, month] = ym.split("-").map(Number);
+  const d = new Date(year, month - 1 + amount, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function currentYearMonth() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
 function fmtMinute(m: number) {
   const h = Math.floor(m / 60).toString().padStart(2, "0");
   const mm = (m % 60).toString().padStart(2, "0");
@@ -280,6 +291,27 @@ export default function ShiftTablePage() {
             style={{ display: "block", padding: 8 }}
           />
         </label>
+
+        <button
+          onClick={() => setYearMonth(moveMonth(yearMonth, -1))}
+          style={{ padding: "10px 14px", fontWeight: 700 }}
+        >
+          ← 前月
+        </button>
+
+        <button
+          onClick={() => setYearMonth(currentYearMonth())}
+          style={{ padding: "10px 14px", fontWeight: 700 }}
+        >
+          今月
+        </button>
+
+        <button
+          onClick={() => setYearMonth(moveMonth(yearMonth, 1))}
+          style={{ padding: "10px 14px", fontWeight: 700 }}
+        >
+          次月 →
+        </button>
 
         <button
           onClick={refresh}
