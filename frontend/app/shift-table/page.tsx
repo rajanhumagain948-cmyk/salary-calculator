@@ -454,9 +454,9 @@ export default function ShiftTablePage() {
                       }}
                     >
                       {shift
-                        ? `${fmtMinute(shift.start_minute)}-${fmtMinute(
-                            shift.end_minute
-                          )}`
+                        ? `${shift.confirmed ? "✓ " : ""}${fmtMinute(
+                            shift.start_minute
+                          )}-${fmtMinute(shift.end_minute)}`
                         : "＋"}
                     </td>
                   );
