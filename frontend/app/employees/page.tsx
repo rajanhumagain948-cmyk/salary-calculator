@@ -33,11 +33,37 @@ type Employee = {
   standard_monthly_remuneration: string;
 };
 
+const emptyEmployee: Employee = {
+  employee_id: "",
+  name: "",
+  employment_type: "正社員",
+  hire_date: new Date().toISOString().slice(0, 10),
+  pay_type: "月給",
+  hourly_rate: "0",
+  monthly_salary: "0",
+  weekly_hours: "40",
+  weekly_days: 5,
+  contract_months: null,
+  workplace_size: 0,
+  is_student: false,
+  dependents: 0,
+  tax_category: "甲",
+  birth_date: null,
+  termination_date: null,
+  prefecture: "東京都",
+  resident_tax_monthly: "0",
+  resident_tax_method: "特別徴収",
+  standard_monthly_remuneration: "0",
+};
+
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<EmployeeSummary[]>([]);
   const [selected, setSelected] = useState<Employee | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState<Employee>({ ...emptyEmployee });
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
 
   async function loadEmployees() {
     setError("");
@@ -81,6 +107,81 @@ export default function EmployeesPage() {
     }
   }
 
+  async function createEmployee() {
+    setError("");
+    setMessage("");
+
+    if (!form.employee_id.trim() || !form.name.trim() || !form.hire_date) {
+      setError("社員番号・氏名・入社日は必須です。");
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      const data = new FormData();
+
+      data.append("employee_id", form.employee_id.trim());
+      data.append("name", form.name.trim());
+      data.append("employment_type", form.employment_type);
+      data.append("hire_date", form.hire_date);
+      data.append("pay_type", form.pay_type);
+      data.append("hourly_rate", form.hourly_rate || "0");
+      data.append("monthly_salary", form.monthly_salary || "0");
+      data.append("weekly_hours", form.weekly_hours || "0");
+      data.append("weekly_days", String(form.weekly_days));
+      data.append(
+        "contract_months",
+        form.contract_months === null ? "" : String(form.contract_months)
+      );
+      data.append("workplace_size", String(form.workplace_size));
+      data.append("is_student", form.is_student ? "1" : "0");
+      data.append("dependents", String(form.dependents));
+      data.append("tax_category", form.tax_category);
+      data.append("birth_date", form.birth_date ?? "");
+      data.append("termination_date", form.termination_date ?? "");
+      data.append("prefecture", form.prefecture);
+      data.append("resident_tax_monthly", form.resident_tax_monthly || "0");
+      data.append("resident_tax_method", form.resident_tax_method);
+      data.append(
+        "standard_monthly_remuneration",
+        form.standard_monthly_remuneration || "0"
+      );
+
+      const res = await fetch(`${API_BASE}/employees`, {
+        method: "POST",
+        credentials: "include",
+        body: data,
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+
+        if (res.status === 409) {
+          setError("その社員番号はすでに登録されています。");
+        } else {
+          setError(
+            body?.detail
+              ? `登録に失敗しました: ${body.detail}`
+              : `登録に失敗しました: ${res.status}`
+          );
+        }
+        return;
+      }
+
+      const result = await res.json();
+
+      setForm({ ...emptyEmployee });
+      setSelected(result.employee);
+      setMessage("従業員を登録しました。");
+      await loadEmployees();
+    } catch {
+      setError("従業員の登録中に通信エラーが発生しました。");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   useEffect(() => {
     loadEmployees();
   }, []);
@@ -97,6 +198,162 @@ export default function EmployeesPage() {
       <h1>従業員管理</h1>
 
       {error && <p style={{ color: "#ff6b6b" }}>{error}</p>}
+
+      <section
+        style={{
+          border: "1px solid #555",
+          borderRadius: 8,
+          padding: 20,
+          marginBottom: 24,
+        }}
+      >
+        <h2 style={{ marginTop: 0 }}>新規従業員登録</h2>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+            gap: 12,
+          }}
+        >
+          <label>
+            社員番号 *
+            <input
+              value={form.employee_id}
+              onChange={(e) =>
+                setForm({ ...form, employee_id: e.target.value })
+              }
+              style={{ display: "block", width: "100%", padding: 8 }}
+            />
+          </label>
+
+          <label>
+            氏名 *
+            <input
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              style={{ display: "block", width: "100%", padding: 8 }}
+            />
+          </label>
+
+          <label>
+            雇用形態
+            <select
+              value={form.employment_type}
+              onChange={(e) =>
+                setForm({ ...form, employment_type: e.target.value })
+              }
+              style={{ display: "block", width: "100%", padding: 8 }}
+            >
+              <option value="正社員">正社員</option>
+              <option value="契約社員">契約社員</option>
+              <option value="パート">パート</option>
+              <option value="アルバイト">アルバイト</option>
+            </select>
+          </label>
+
+          <label>
+            入社日 *
+            <input
+              type="date"
+              value={form.hire_date}
+              onChange={(e) =>
+                setForm({ ...form, hire_date: e.target.value })
+              }
+              style={{ display: "block", width: "100%", padding: 8 }}
+            />
+          </label>
+
+          <label>
+            給与形態
+            <select
+              value={form.pay_type}
+              onChange={(e) =>
+                setForm({ ...form, pay_type: e.target.value })
+              }
+              style={{ display: "block", width: "100%", padding: 8 }}
+            >
+              <option value="月給">月給</option>
+              <option value="時給">時給</option>
+            </select>
+          </label>
+
+          {form.pay_type === "月給" ? (
+            <label>
+              月給（円）
+              <input
+                type="number"
+                min="0"
+                value={form.monthly_salary}
+                onChange={(e) =>
+                  setForm({ ...form, monthly_salary: e.target.value })
+                }
+                style={{ display: "block", width: "100%", padding: 8 }}
+              />
+            </label>
+          ) : (
+            <label>
+              時給（円）
+              <input
+                type="number"
+                min="0"
+                value={form.hourly_rate}
+                onChange={(e) =>
+                  setForm({ ...form, hourly_rate: e.target.value })
+                }
+                style={{ display: "block", width: "100%", padding: 8 }}
+              />
+            </label>
+          )}
+
+          <label>
+            週所定時間
+            <input
+              type="number"
+              min="0"
+              step="0.5"
+              value={form.weekly_hours}
+              onChange={(e) =>
+                setForm({ ...form, weekly_hours: e.target.value })
+              }
+              style={{ display: "block", width: "100%", padding: 8 }}
+            />
+          </label>
+
+          <label>
+            週所定日数
+            <input
+              type="number"
+              min="0"
+              max="7"
+              value={form.weekly_days}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  weekly_days: Number(e.target.value),
+                })
+              }
+              style={{ display: "block", width: "100%", padding: 8 }}
+            />
+          </label>
+        </div>
+
+        <button
+          onClick={createEmployee}
+          disabled={saving}
+          style={{
+            marginTop: 16,
+            padding: "10px 18px",
+            fontWeight: 700,
+          }}
+        >
+          {saving ? "登録中..." : "従業員を登録"}
+        </button>
+
+        {message && (
+          <p style={{ color: "#5ee28a", marginBottom: 0 }}>{message}</p>
+        )}
+      </section>
 
       <div
         style={{
