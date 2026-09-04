@@ -60,7 +60,10 @@ function timeToMinute(value: string) {
 
 export default function ShiftTablePage() {
   const [me, setMe] = useState<Me | null>(null);
-  const [yearMonth, setYearMonth] = useState("2026-08");
+  const [yearMonth, setYearMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  });
   const [employees, setEmployees] = useState<Emp[]>([]);
   const [shiftMap, setShiftMap] = useState<Record<string, Shift>>({});
   const [editor, setEditor] = useState<Editor | null>(null);
@@ -337,14 +340,35 @@ export default function ShiftTablePage() {
                 const day = i + 1;
                 const dateStr = `${yearMonth}-${String(day).padStart(2, "0")}`;
                 const d = new Date(`${dateStr}T00:00:00`);
+                const weekday = d.getDay();
+                const now = new Date();
+                const todayStr = `${now.getFullYear()}-${String(
+                  now.getMonth() + 1
+                ).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+                const isToday = dateStr === todayStr;
 
                 return (
                   <th
                     key={day}
                     style={{
                       borderBottom: "1px solid #555",
+                      borderTop: isToday ? "2px solid #ffd54a" : undefined,
+                      borderLeft: isToday ? "2px solid #ffd54a" : undefined,
+                      borderRight: isToday ? "2px solid #ffd54a" : undefined,
                       padding: 6,
                       whiteSpace: "nowrap",
+                      background:
+                        weekday === 0
+                          ? "#4a1f1f"
+                          : weekday === 6
+                            ? "#1f304a"
+                            : "transparent",
+                      color:
+                        weekday === 0
+                          ? "#ff9b9b"
+                          : weekday === 6
+                            ? "#9bc2ff"
+                            : "inherit",
                     }}
                   >
                     {String(day).padStart(2, "0")}({weekdayJP(d)})
@@ -392,6 +416,13 @@ export default function ShiftTablePage() {
                   const dateStr = `${yearMonth}-${String(day).padStart(2, "0")}`;
                   const key = `${emp.employee_id}|${dateStr}`;
                   const shift = shiftMap[key];
+                  const d = new Date(`${dateStr}T00:00:00`);
+                  const weekday = d.getDay();
+                  const now = new Date();
+                  const todayStr = `${now.getFullYear()}-${String(
+                    now.getMonth() + 1
+                  ).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+                  const isToday = dateStr === todayStr;
 
                   return (
                     <td
@@ -399,13 +430,26 @@ export default function ShiftTablePage() {
                       onClick={() => openEditor(emp, dateStr)}
                       title="クリックして編集"
                       style={{
-                        borderBottom: "1px solid #444",
-                        borderLeft: "1px solid #333",
+                        borderBottom: isToday
+                          ? "2px solid #ffd54a"
+                          : "1px solid #444",
+                        borderLeft: isToday
+                          ? "2px solid #ffd54a"
+                          : "1px solid #333",
+                        borderRight: isToday
+                          ? "2px solid #ffd54a"
+                          : undefined,
                         padding: 8,
                         textAlign: "center",
                         whiteSpace: "nowrap",
                         cursor: "pointer",
-                        background: shift ? "#17351f" : "transparent",
+                        background: shift
+                          ? "#17351f"
+                          : weekday === 0
+                            ? "#241515"
+                            : weekday === 6
+                              ? "#151b24"
+                              : "transparent",
                         minWidth: 105,
                       }}
                     >
