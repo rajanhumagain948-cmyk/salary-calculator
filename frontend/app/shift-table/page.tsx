@@ -407,6 +407,18 @@ export default function ShiftTablePage() {
                   </th>
                 );
               })}
+
+              <th
+                style={{
+                  borderBottom: "1px solid #555",
+                  borderLeft: "2px solid #666",
+                  padding: 8,
+                  whiteSpace: "nowrap",
+                  background: "#222",
+                }}
+              >
+                月間実働
+              </th>
             </tr>
           </thead>
 
@@ -493,6 +505,41 @@ export default function ShiftTablePage() {
                     </td>
                   );
                 })}
+
+                <td
+                  style={{
+                    borderBottom: "1px solid #444",
+                    borderLeft: "2px solid #666",
+                    padding: 8,
+                    textAlign: "center",
+                    whiteSpace: "nowrap",
+                    fontWeight: 700,
+                    background: "#222",
+                  }}
+                >
+                  {(() => {
+                    let total = 0;
+
+                    for (let day = 1; day <= dayCount; day++) {
+                      const dateStr = `${yearMonth}-${String(day).padStart(2, "0")}`;
+                      const shift = shiftMap[`${emp.employee_id}|${dateStr}`];
+
+                      if (shift) {
+                        total += Math.max(
+                          0,
+                          shift.end_minute -
+                            shift.start_minute -
+                            shift.break_minutes
+                        );
+                      }
+                    }
+
+                    const hours = Math.floor(total / 60);
+                    const minutes = total % 60;
+
+                    return `${hours}時間${minutes}分`;
+                  })()}
+                </td>
               </tr>
             ))}
           </tbody>
