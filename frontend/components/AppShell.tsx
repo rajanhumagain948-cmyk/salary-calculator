@@ -85,7 +85,7 @@ export default function AppShell({ children }: Props) {
     return () => {
       window.removeEventListener("company-updated", handleCompanyUpdated);
     };
-  }, []);
+  }, [pathname]);
 
   async function handleLogout() {
     const apiBase =
@@ -119,7 +119,12 @@ export default function AppShell({ children }: Props) {
         </div>
 
         <nav className="app-nav" aria-label="メインナビゲーション">
-          {(me?.role === "employee" ? employeeNav : adminNav).map((item) => {
+          {(me
+            ? me.role === "employee"
+              ? employeeNav
+              : adminNav
+            : []
+          ).map((item) => {
             const active =
               pathname === item.href ||
               (item.href !== "/" && pathname.startsWith(`${item.href}/`));
@@ -179,7 +184,59 @@ export default function AppShell({ children }: Props) {
               稼働中
             </div>
 
-            <div className="avatar">A</div>
+            {me && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                }}
+              >
+                <div
+                  style={{
+                    textAlign: "right",
+                    lineHeight: 1.25,
+                  }}
+                >
+                  <strong
+                    style={{
+                      display: "block",
+                      fontSize: 11,
+                    }}
+                  >
+                    {me.username}
+                  </strong>
+
+                  <span
+                    style={{
+                      color: "#8fa6bf",
+                      fontSize: 9,
+                    }}
+                  >
+                    {me.role === "admin" ? "管理者" : "従業員"}
+                  </span>
+                </div>
+
+                <div className="avatar">
+                  {(me.username[0] || "?").toUpperCase()}
+                </div>
+
+                <button
+                  onClick={handleLogout}
+                  style={{
+                    padding: "7px 11px",
+                    border: "1px solid rgba(148,180,216,.16)",
+                    borderRadius: 9,
+                    color: "#b7c7d8",
+                    background: "rgba(255,255,255,.03)",
+                    cursor: "pointer",
+                    fontSize: 10,
+                  }}
+                >
+                  ログアウト
+                </button>
+              </div>
+            )}
           </div>
         </header>
 
