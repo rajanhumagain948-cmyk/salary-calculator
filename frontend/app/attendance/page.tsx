@@ -6,6 +6,13 @@ import AuthGuard from "@/components/auth/AuthGuard";
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
 
+type AuditItem = {
+  created_at: string;
+  action: string;
+  subject: string;
+  detail: string;
+};
+
 type Employee = {
   employee_id: string;
   name: string;
@@ -66,6 +73,30 @@ export default function AttendanceAdminPage() {
   const [editor, setEditor] = useState<AttendanceForm | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [auditItems, setAuditItems] = useState<AuditItem[]>([]);
+
+  async function loadAudit() {
+    try {
+      const res = await fetch(`${API_BASE}/audit?limit=100`, {
+        credentials: "include",
+        cache: "no-store",
+      });
+
+      if (!res.ok) return;
+
+      const items: AuditItem[] = await res.json();
+
+      setAuditItems(
+        items.filter((item) =>
+          ["勤怠追加", "勤怠編集", "勤怠削除", "勤怠打刻"].includes(
+            item.action
+          )
+        )
+      );
+    } catch {
+      // 勤怠一覧の利用は継続する
+    }
+  }
 
   async function loadEmployees() {
     try {
@@ -195,6 +226,7 @@ export default function AttendanceAdminPage() {
       setEditor(null);
       setMessage("勤怠を保存しました。");
       await loadAttendance(selected, yearMonth);
+      await loadAudit();
     } catch {
       setError("勤怠の保存中に通信エラーが発生しました。");
     } finally {
@@ -241,6 +273,7 @@ export default function AttendanceAdminPage() {
 
       setMessage("勤怠を削除しました。");
       await loadAttendance(selected, yearMonth);
+      await loadAudit();
     } catch {
       setError("勤怠の削除中に通信エラーが発生しました。");
     }
@@ -259,6 +292,7 @@ export default function AttendanceAdminPage() {
 
   useEffect(() => {
     loadEmployees();
+    loadAudit();
   }, []);
 
   useEffect(() => {
@@ -849,6 +883,131 @@ export default function AttendanceAdminPage() {
             )}
           </section>
         </div>
+
+        <section
+          style={{
+            ...panelStyle,
+            marginTop: 18,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 12,
+              paddingBottom: 13,
+              marginBottom: 5,
+              borderBottom: "1px solid rgba(148,180,216,.10)",
+            }}
+          >
+            <div>
+              <strong style={{ fontSize: 14 }}>最近の勤怠変更履歴</strong>
+              <div
+                style={{
+                  marginTop: 3,
+                  color: "#71879d",
+                  fontSize: 9,
+                }}
+              >
+                打刻・追加・編集・削除の履歴
+              </div>
+            </div>
+
+            <button
+              onClick={loadAudit}
+              style={buttonStyle}
+            >
+              再取得
+            </button>
+          </div>
+
+          {auditItems.length === 0 ? (
+            <div
+              style={{
+                padding: 30,
+                textAlign: "center",
+                color: "#71879d",
+                fontSize: 11,
+              }}
+            >
+              勤怠の変更履歴はまだありません。
+            </div>
+          ) : (
+            <div
+              style={{
+                maxHeight: 300,
+                overflowY: "auto",
+              }}
+            >
+              {auditItems.map((item, index) => {
+                const color =
+                  item.action === "勤怠削除"
+                    ? "#ff9aa6"
+                    : item.action === "勤怠編集"
+                      ? "#f6c85f"
+                      : item.action === "勤怠打刻"
+                        ? "#67e7b8"
+                        : "#9ba5ff";
+
+                return (
+                  <div
+                    key={`${item.created_at}-${item.action}-${index}`}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "150px 90px 120px minmax(0,1fr)",
+                      gap: 14,
+                      alignItems: "center",
+                      padding: "11px 7px",
+                      borderBottom:
+                        "1px solid rgba(148,180,216,.07)",
+                    }}
+                  >
+                    <span
+                      style={{
+                        color: "#71879d",
+                        fontSize: 10,
+                      }}
+                    >
+                      {new Date(item.created_at).toLocaleString("ja-JP")}
+                    </span>
+
+                    <span
+                      style={{
+                        width: "max-content",
+                        padding: "4px 7px",
+                        color,
+                        border: `1px solid ${color}33`,
+                        borderRadius: 999,
+                        background: `${color}0d`,
+                        fontSize: 9,
+                        fontWeight: 750,
+                      }}
+                    >
+                      {item.action}
+                    </span>
+
+                    <strong style={{ fontSize: 10 }}>
+                      {item.subject}
+                    </strong>
+
+                    <span
+                      style={{
+                        color: "#879db3",
+                        fontSize: 10,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {item.detail}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
       </main>
     </AuthGuard>
   );

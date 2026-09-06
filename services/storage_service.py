@@ -462,6 +462,7 @@ class PayrollRepository:
 
     def save_work_record(self, record: WorkRecord) -> WorkRecord:
         payload = self._dump(asdict(record))
+        is_new = record.record_id is None
 
         if record.record_id is None:
             cursor = self.connection.execute(
@@ -497,6 +498,13 @@ class PayrollRepository:
             )
 
         self.connection.commit()
+
+        self.audit(
+            "勤怠追加" if is_new else "勤怠編集",
+            record.employee_id,
+            record.work_date.isoformat(),
+        )
+
         return record
 
     def work_records(

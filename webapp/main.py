@@ -829,3 +829,27 @@ def attendance_clock(
         "event_type": event_type,
         "record_id": record_id,
     }
+
+
+@app.get("/audit")
+def audit_log(
+    request: Request,
+    limit: int = 50,
+):
+    user = require_user(request)
+
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="admin only")
+
+    limit = max(1, min(limit, 200))
+
+    return [
+        {
+            "created_at": created_at,
+            "action": action,
+            "subject": subject,
+            "detail": detail,
+        }
+        for created_at, action, subject, detail
+        in repo.recent_audit(limit)
+    ]
