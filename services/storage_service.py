@@ -143,6 +143,27 @@ class PayrollRepository:
             """
         )
 
+        self.connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS attendance_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                employee_id TEXT NOT NULL,
+                event_at TEXT NOT NULL,
+                event_type TEXT NOT NULL,
+                method TEXT NOT NULL DEFAULT 'web'
+            )
+            """
+        )
+
+        self.connection.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_attendance_events_employee_time
+            ON attendance_events(employee_id, event_at)
+            """
+        )
+
+        self.connection.commit()
+
     @staticmethod
     def _dump(value: object) -> str:
         return json.dumps(
@@ -880,3 +901,89 @@ class PayrollRepository:
             deductions,
             Transportation(**transport_data),
         )
+    # ------------------------------------------------------------------
+    # Attendance events / Clock
+    # ------------------------------------------------------------------
+
+    def save_attendance_event(
+        self,
+        employee_id: str,
+        event_type: str,
+        event_at: datetime | None = None,
+        method: str = "web",
+    ) -> int:
+        if event_type not in (
+            "clock_in",
+            "break_start",
+            "break_end",
+            "clock_out",
+        ):
+            raise ValueError("不正な打刻種別です。")
+
+        event_at = event_at or datetime.now()
+
+        cursor = self.connection.execute(
+            """
+            INSERT INTO attendance_events(
+                employee_id,
+                event_at,
+                event_type,
+                method
+            )
+            VALUES (?, ?, ?, ?)
+            """,
+            (
+                employee_id,
+                event_at.isoformat(timespec="seconds"),
+                event_type,
+                method,
+            ),
+        )
+
+        self.connection.commit()
+
+        self.audit(
+            "勤怠打刻",
+            employee_id,
+            f"{event_type}:{method}",
+        )
+
+        return int(cursor.lastrowid)
+
+    def attendance_events(
+        self,
+        employee_id: str,
+        target_date: date,
+    ) -> list[dict[str, object]]:
+        start = datetime.combine(target_date, datetime.min.time())
+        end = datetime.combine(
+            target_date,
+            datetime.max.time(),
+        )
+
+        rows = self.connection.execute(
+            """
+            SELECT id, employee_id, event_at, event_type, method
+            FROM attendance_events
+            WHERE employee_id = ?
+              AND event_at >= ?
+              AND event_at <= ?
+            ORDER BY event_at, id
+            """,
+            (
+                employee_id,
+                start.isoformat(timespec="seconds"),
+                end.isoformat(timespec="seconds"),
+            ),
+        ).fetchall()
+
+        return [
+            {
+                "event_id": row[0],
+                "employee_id": row[1],
+                "event_at": row[2],
+                "event_type": row[3],
+                "method": row[4],
+            }
+            for row in rows
+        ]

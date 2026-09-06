@@ -1,3 +1,5 @@
+import unicodedata
+
 from fastapi import FastAPI, Form, HTTPException, Response, Request
 from fastapi.responses import JSONResponse
 from itsdangerous import URLSafeSerializer, BadSignature
@@ -7,11 +9,13 @@ from services.storage_service import PayrollRepository
 from services.auth_service import verify_password
 from pathlib import Path
 from fastapi.middleware.cors import CORSMiddleware
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
+from models.break_record import BreakRecord
 from models.company import Company
 from models.employee import Employee
 from models.shifts import Shift
+from models.work_record import WorkRecord
 
 app = FastAPI(title="Salary Calculator Web")
 app.add_middleware(
@@ -30,6 +34,13 @@ repo = PayrollRepository(Path("data/payroll.sqlite3"))
 serializer = URLSafeSerializer("dev-secret-change-me", salt="session")
 
 COOKIE_NAME = "salary_session"
+
+
+def normalize_input(value: str) -> str:
+    """全角英数字・記号を半角へ寄せ、前後の空白を除去する。"""
+    return unicodedata.normalize("NFKC", value).strip()
+
+
 
 
 def set_session_cookie(resp: Response, username: str) -> None:
@@ -508,3 +519,313 @@ def delete_shift(
 
     repo.delete_shift(employee_id, int(shift_id))
     return {"ok": True}
+
+@app.get("/attendance/{year_month}")
+def get_attendance(
+    year_month: str,
+    request: Request,
+    employee_id: str | None = None,
+):
+    user = require_user(request)
+    year_month = normalize_input(year_month)
+
+    if user.role == "employee":
+        if not user.employee_id:
+            raise HTTPException(status_code=400, detail="employee_id not set")
+        target_employee_id = normalize_input(user.employee_id)
+    else:
+        if not employee_id:
+            raise HTTPException(status_code=400, detail="employee_id required")
+        target_employee_id = normalize_input(employee_id)
+
+    try:
+        year, month = year_month.split("-")
+        if len(year) != 4 or len(month) != 2:
+            raise ValueError
+        date(int(year), int(month), 1)
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail="year_month must be YYYY-MM",
+        ) from error
+
+    records = repo.work_records(target_employee_id, year_month)
+
+    return [
+        {
+            "record_id": record.record_id,
+            "employee_id": record.employee_id,
+            "work_date": record.work_date.isoformat(),
+            "start_minute": record.start_minute,
+            "end_minute": record.end_minute,
+            "is_holiday": record.is_holiday,
+            "break_total_minutes": record.actual_break_minutes,
+            "breaks": [
+                {
+                    "start_minute": item.start_minute,
+                    "end_minute": item.end_minute,
+                }
+                for item in record.breaks
+            ],
+            "span_minutes": record.span_minutes,
+            "work_minutes": max(
+                0,
+                record.span_minutes - record.actual_break_minutes,
+            ),
+        }
+        for record in records
+    ]
+
+
+@app.post("/attendance")
+def save_attendance(
+    request: Request,
+    work_date: str = Form(...),
+    start_minute: int = Form(...),
+    end_minute: int = Form(...),
+    break_minutes: int = Form(0),
+    is_holiday: int = Form(0),
+    employee_id: str = Form(""),
+    record_id: int | None = Form(None),
+):
+    user = require_user(request)
+    work_date = normalize_input(work_date)
+    employee_id = normalize_input(employee_id)
+
+    if user.role == "employee":
+        if not user.employee_id:
+            raise HTTPException(status_code=400, detail="employee_id not set")
+        target_employee_id = user.employee_id
+    else:
+        target_employee_id = employee_id.strip()
+        if not target_employee_id:
+            raise HTTPException(
+                status_code=400,
+                detail="employee_id required",
+            )
+
+    try:
+        parsed_date = date.fromisoformat(work_date)
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail="work_date must be YYYY-MM-DD",
+        ) from error
+
+    if not 0 <= start_minute < 1440:
+        raise HTTPException(status_code=400, detail="invalid start_minute")
+
+    if not 0 <= end_minute < 1440:
+        raise HTTPException(status_code=400, detail="invalid end_minute")
+
+    if break_minutes < 0:
+        raise HTTPException(status_code=400, detail="invalid break_minutes")
+
+    record = WorkRecord(
+        employee_id=target_employee_id,
+        work_date=parsed_date,
+        start_minute=start_minute,
+        end_minute=end_minute,
+        is_holiday=bool(is_holiday),
+        break_total_minutes=break_minutes,
+        record_id=record_id,
+    )
+
+    if record.actual_break_minutes > record.span_minutes:
+        raise HTTPException(
+            status_code=400,
+            detail="break time exceeds work span",
+        )
+
+    saved = repo.save_work_record(record)
+
+    return {
+        "ok": True,
+        "record_id": saved.record_id,
+    }
+
+
+@app.post("/attendance/delete")
+def delete_attendance(
+    request: Request,
+    record_id: int = Form(...),
+    employee_id: str = Form(""),
+):
+    user = require_user(request)
+
+    if user.role == "employee":
+        if not user.employee_id:
+            raise HTTPException(status_code=400, detail="employee_id not set")
+        target_employee_id = user.employee_id
+    else:
+        target_employee_id = employee_id.strip()
+        if not target_employee_id:
+            raise HTTPException(
+                status_code=400,
+                detail="employee_id required",
+            )
+
+    repo.delete_work_record(target_employee_id, record_id)
+
+    return {"ok": True}
+
+
+@app.get("/attendance/today/events")
+def attendance_today_events(request: Request):
+    user = require_user(request)
+
+    if user.role != "employee":
+        raise HTTPException(status_code=403, detail="employee only")
+
+    if not user.employee_id:
+        raise HTTPException(status_code=400, detail="employee_id not set")
+
+    today = date.today()
+    events = repo.attendance_events(user.employee_id, today)
+
+    return {
+        "date": today.isoformat(),
+        "employee_id": user.employee_id,
+        "events": events,
+    }
+
+
+@app.post("/attendance/clock")
+def attendance_clock(
+    request: Request,
+    event_type: str = Form(...),
+):
+    user = require_user(request)
+
+    if user.role != "employee":
+        raise HTTPException(status_code=403, detail="employee only")
+
+    if not user.employee_id:
+        raise HTTPException(status_code=400, detail="employee_id not set")
+
+    allowed_types = {
+        "clock_in",
+        "break_start",
+        "break_end",
+        "clock_out",
+    }
+
+    if event_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="invalid event_type")
+
+    today = date.today()
+    events = repo.attendance_events(user.employee_id, today)
+    types = [str(event["event_type"]) for event in events]
+
+    if not types:
+        expected = {"clock_in"}
+    else:
+        last = types[-1]
+
+        if last == "clock_in":
+            expected = {"break_start", "clock_out"}
+        elif last == "break_start":
+            expected = {"break_end"}
+        elif last == "break_end":
+            expected = {"break_start", "clock_out"}
+        else:
+            expected = set()
+
+    if event_type not in expected:
+        raise HTTPException(
+            status_code=409,
+            detail="invalid attendance event order",
+        )
+
+    event_id = repo.save_attendance_event(
+        employee_id=user.employee_id,
+        event_type=event_type,
+        method="web",
+    )
+
+    record_id = None
+
+    if event_type == "clock_out":
+        completed_events = repo.attendance_events(
+            user.employee_id,
+            today,
+        )
+
+        clock_in_event = next(
+            event
+            for event in completed_events
+            if event["event_type"] == "clock_in"
+        )
+
+        clock_out_event = completed_events[-1]
+
+        start_at = datetime.fromisoformat(
+            str(clock_in_event["event_at"])
+        )
+        end_at = datetime.fromisoformat(
+            str(clock_out_event["event_at"])
+        )
+
+        start_minute = start_at.hour * 60 + start_at.minute
+        end_minute = end_at.hour * 60 + end_at.minute
+
+        breaks: list[BreakRecord] = []
+        break_start_at: datetime | None = None
+
+        for event in completed_events:
+            event_at = datetime.fromisoformat(str(event["event_at"]))
+
+            if event["event_type"] == "break_start":
+                break_start_at = event_at
+
+            elif (
+                event["event_type"] == "break_end"
+                and break_start_at is not None
+            ):
+                breaks.append(
+                    BreakRecord(
+                        start_minute=(
+                            break_start_at.hour * 60
+                            + break_start_at.minute
+                        ),
+                        end_minute=(
+                            event_at.hour * 60
+                            + event_at.minute
+                        ),
+                    )
+                )
+                break_start_at = None
+
+        existing = next(
+            (
+                record
+                for record in repo.work_records(
+                    user.employee_id,
+                    today.strftime("%Y-%m"),
+                )
+                if record.work_date == today
+            ),
+            None,
+        )
+
+        work_record = WorkRecord(
+            employee_id=user.employee_id,
+            work_date=today,
+            start_minute=start_minute,
+            end_minute=end_minute,
+            breaks=breaks,
+            break_total_minutes=sum(
+                item.minutes for item in breaks
+            ),
+            record_id=existing.record_id if existing else None,
+        )
+
+        saved_record = repo.save_work_record(work_record)
+        record_id = saved_record.record_id
+
+    return {
+        "ok": True,
+        "event_id": event_id,
+        "event_type": event_type,
+        "record_id": record_id,
+    }

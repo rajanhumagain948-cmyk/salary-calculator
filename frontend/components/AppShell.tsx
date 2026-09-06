@@ -21,7 +21,7 @@ const adminNav = [
 
 const employeeNav = [
   { href: "/my", label: "マイページ", icon: "⌂", enabled: true },
-  { href: "/my-attendance", label: "自分の勤怠", icon: "◷", enabled: false },
+  { href: "/my-attendance", label: "自分の勤怠", icon: "◷", enabled: true },
   { href: "/shifts", label: "自分のシフト", icon: "▦", enabled: true },
   { href: "/payslips", label: "給与明細", icon: "¥", enabled: false },
   { href: "/my-leave", label: "有給休暇", icon: "◇", enabled: false },
