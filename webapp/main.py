@@ -1,3 +1,4 @@
+import json
 import unicodedata
 
 from fastapi import FastAPI, Form, HTTPException, Response, Request
@@ -16,6 +17,10 @@ from models.company import Company
 from models.employee import Employee
 from models.shifts import Shift
 from models.work_record import WorkRecord
+from models.allowance import Allowance
+from models.deduction import OtherDeduction
+from models.transportation import Transportation
+from services.payroll_service import calculate_payroll
 
 app = FastAPI(title="Salary Calculator Web")
 app.add_middleware(
@@ -853,3 +858,303 @@ def audit_log(
         for created_at, action, subject, detail
         in repo.recent_audit(limit)
     ]
+
+
+def payroll_result_to_dict(result):
+    return {
+        "employee_id": result.employee_id,
+        "year_month": result.year_month,
+        "payments": {
+            key: str(value)
+            for key, value in result.payments.items()
+        },
+        "deductions": {
+            key: str(value)
+            for key, value in result.deductions.items()
+        },
+        "gross_pay": str(result.gross_pay),
+        "total_deductions": str(result.total_deductions),
+        "net_pay": str(result.net_pay),
+        "classification": {
+            "regular_minutes": result.classification.regular_minutes,
+            "overtime_minutes": result.classification.overtime_minutes,
+            "night_minutes": result.classification.night_minutes,
+            "regular_night_minutes": result.classification.regular_night_minutes,
+            "holiday_minutes": result.classification.holiday_minutes,
+            "overtime_night_minutes": result.classification.overtime_night_minutes,
+            "holiday_night_minutes": result.classification.holiday_night_minutes,
+            "overtime_over_60_minutes": (
+                result.classification.overtime_over_60_minutes
+            ),
+        },
+        "warnings": result.warnings,
+        "blocking_issues": result.blocking_issues,
+        "finalized": result.finalized,
+        "company_name": result.company_name,
+    }
+
+
+@app.post("/payroll/calculate")
+def calculate_employee_payroll(
+    request: Request,
+    employee_id: str = Form(...),
+    year_month: str = Form(...),
+):
+    user = require_user(request)
+
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="admin only")
+
+    employee_id = normalize_input(employee_id)
+    year_month = normalize_input(year_month)
+
+    employee = next(
+        (
+            employee
+            for employee in repo.employees()
+            if employee.employee_id == employee_id
+        ),
+        None,
+    )
+
+    if employee is None:
+        raise HTTPException(status_code=404, detail="employee not found")
+
+    try:
+        year, month = year_month.split("-")
+        if len(year) != 4 or len(month) != 2:
+            raise ValueError
+        date(int(year), int(month), 1)
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail="year_month must be YYYY-MM",
+        ) from error
+
+    terms = repo.terms(employee_id)
+    records = repo.work_records(employee_id, year_month)
+    allowances, deductions, transport = repo.monthly_inputs(
+        employee_id,
+        year_month,
+    )
+
+    transport.attendance_days = len(records)
+
+    try:
+        result = calculate_payroll(
+            employee=employee,
+            terms=terms,
+            records=records,
+            allowances=allowances,
+            transport=transport,
+            other_deductions=deductions,
+            year_month=year_month,
+        )
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error),
+        ) from error
+
+    result.company_name = repo.company().name
+    repo.save_payroll_result(result)
+
+    return payroll_result_to_dict(result)
+
+
+@app.get("/payroll/{year_month}/{employee_id}")
+def get_payroll_result(
+    year_month: str,
+    employee_id: str,
+    request: Request,
+):
+    user = require_user(request)
+
+    employee_id = normalize_input(employee_id)
+    year_month = normalize_input(year_month)
+
+    if user.role == "employee":
+        if not user.employee_id:
+            raise HTTPException(status_code=400, detail="employee_id not set")
+
+        if normalize_input(user.employee_id) != employee_id:
+            raise HTTPException(status_code=403, detail="forbidden")
+
+    result = repo.payroll_result(employee_id, year_month)
+
+    if result is None:
+        raise HTTPException(status_code=404, detail="payroll not found")
+
+    return payroll_result_to_dict(result)
+
+
+@app.get("/payroll-inputs/{year_month}/{employee_id}")
+def get_payroll_inputs(
+    year_month: str,
+    employee_id: str,
+    request: Request,
+):
+    user = require_user(request)
+
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="admin only")
+
+    employee_id = normalize_input(employee_id)
+    year_month = normalize_input(year_month)
+
+    allowances, deductions, transport = repo.monthly_inputs(
+        employee_id,
+        year_month,
+    )
+
+    return {
+        "employee_id": employee_id,
+        "year_month": year_month,
+        "allowances": [
+            {
+                "name": item.name,
+                "amount": str(item.amount),
+                "taxable": item.taxable,
+            }
+            for item in allowances
+        ],
+        "deductions": [
+            {
+                "name": item.name,
+                "amount": str(item.amount),
+            }
+            for item in deductions
+        ],
+        "transport": {
+            "method": transport.method,
+            "unit_amount": str(transport.unit_amount),
+            "attendance_days": transport.attendance_days,
+            "taxable": transport.taxable,
+            "amount": str(transport.amount),
+        },
+    }
+
+
+@app.post("/payroll-inputs")
+def save_payroll_inputs(
+    request: Request,
+    employee_id: str = Form(...),
+    year_month: str = Form(...),
+    allowances_json: str = Form("[]"),
+    deductions_json: str = Form("[]"),
+    transport_method: str = Form("なし"),
+    transport_amount: str = Form("0"),
+    transport_taxable: int = Form(0),
+):
+    user = require_user(request)
+
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="admin only")
+
+    employee_id = normalize_input(employee_id)
+    year_month = normalize_input(year_month)
+    transport_method = normalize_input(transport_method)
+    transport_amount = normalize_input(transport_amount)
+
+    if transport_method not in ("なし", "月額固定", "日額", "実費"):
+        raise HTTPException(
+            status_code=400,
+            detail="invalid transport_method",
+        )
+
+    try:
+        raw_allowances = json.loads(
+            normalize_input(allowances_json)
+        )
+        raw_deductions = json.loads(
+            normalize_input(deductions_json)
+        )
+
+        if not isinstance(raw_allowances, list):
+            raise ValueError("allowances must be a list")
+
+        if not isinstance(raw_deductions, list):
+            raise ValueError("deductions must be a list")
+
+        allowances: list[Allowance] = []
+
+        for item in raw_allowances:
+            name = normalize_input(str(item.get("name", "")))
+            amount = Decimal(
+                normalize_input(str(item.get("amount", "0")))
+            )
+            taxable = bool(item.get("taxable", True))
+
+            if not name:
+                raise ValueError("手当名を入力してください。")
+
+            if amount < 0:
+                raise ValueError("手当は0円以上で入力してください。")
+
+            allowances.append(
+                Allowance(
+                    name=name,
+                    amount=amount,
+                    taxable=taxable,
+                )
+            )
+
+        deductions: list[OtherDeduction] = []
+
+        for item in raw_deductions:
+            name = normalize_input(str(item.get("name", "")))
+            amount = Decimal(
+                normalize_input(str(item.get("amount", "0")))
+            )
+
+            if not name:
+                raise ValueError("控除名を入力してください。")
+
+            if amount < 0:
+                raise ValueError("控除は0円以上で入力してください。")
+
+            deductions.append(
+                OtherDeduction(
+                    name=name,
+                    amount=amount,
+                )
+            )
+
+        transport_value = Decimal(transport_amount or "0")
+
+        if transport_value < 0:
+            raise ValueError("交通費は0円以上で入力してください。")
+
+    except (
+        json.JSONDecodeError,
+        ValueError,
+        TypeError,
+    ) as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error),
+        ) from error
+
+    records = repo.work_records(employee_id, year_month)
+
+    transport = Transportation(
+        method=transport_method,
+        unit_amount=transport_value,
+        attendance_days=len(records),
+        taxable=bool(transport_taxable),
+    )
+
+    repo.save_monthly_inputs(
+        employee_id,
+        year_month,
+        allowances,
+        deductions,
+        transport,
+    )
+
+    return {
+        "ok": True,
+        "allowances": len(allowances),
+        "deductions": len(deductions),
+        "transport_amount": str(transport.amount),
+    }
