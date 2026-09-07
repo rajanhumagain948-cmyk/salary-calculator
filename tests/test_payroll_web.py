@@ -539,3 +539,72 @@ def test_admin_can_calculate_all_employees_payroll(tmp_path, monkeypatch):
 
     assert test_repo.payroll_result("E1", "2026-09") is not None
     assert test_repo.payroll_result("E2", "2026-09") is not None
+
+
+def test_batch_payroll_does_not_recalculate_finalized_payroll(
+    tmp_path,
+    monkeypatch,
+):
+    from datetime import date
+
+    from models.employee import Employee
+
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    test_repo.save_user(
+        User(
+            username="admin",
+            password_hash="unused",
+            role="admin",
+        )
+    )
+
+    # 現在の従業員情報は300,000円。
+    test_repo.save_employee(
+        Employee(
+            employee_id="E1",
+            name="確定済み社員",
+            employment_type="正社員",
+            hire_date=date(2026, 1, 1),
+            pay_type="月給",
+            monthly_salary=Decimal("300000"),
+            weekly_hours=Decimal("40"),
+            weekly_days=5,
+            workplace_size=100,
+            standard_monthly_remuneration=Decimal("300000"),
+        )
+    )
+
+    # しかし2026-09給与は200,000円で既に確定済み。
+    test_repo.save_payroll_result(
+        PayrollResult(
+            employee_id="E1",
+            year_month="2026-09",
+            classification=TimeClassification(),
+            payments={"基本給": Decimal("200000")},
+            deductions={"所得税": Decimal("3270")},
+            finalized=True,
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "admin"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.post(
+        "/payroll/calculate-all",
+        data={"year_month": "2026-09"},
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+    assert len(data["results"]) == 1
+    assert data["results"][0]["status"] == "確定済"
+
+    saved = test_repo.payroll_result("E1", "2026-09")
+    assert saved is not None
+    assert saved.finalized is True
+    assert saved.payments["基本給"] == Decimal("200000")
+    assert saved.deductions["所得税"] == Decimal("3270")
