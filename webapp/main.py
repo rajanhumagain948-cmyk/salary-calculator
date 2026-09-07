@@ -1,6 +1,7 @@
 import json
 import unicodedata
 import tempfile
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Form, HTTPException, Response, Request
 from fastapi.responses import JSONResponse, FileResponse
@@ -24,9 +25,16 @@ from models.deduction import OtherDeduction
 from models.transportation import Transportation
 from services.payroll_service import calculate_payroll
 from services.payroll_batch_service import calculate_monthly_payrolls
+from services.payroll_auto_service import run_payroll_auto_check
 from services.payslip_service import export_pdf
 
-app = FastAPI(title="Salary Calculator Web")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    run_payroll_auto_check(repo)
+    yield
+
+
+app = FastAPI(title="Salary Calculator Web", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[

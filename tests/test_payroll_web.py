@@ -741,3 +741,18 @@ def test_batch_payroll_marks_calculation_error_as_unavailable(
     # E2の失敗で一括処理全体が止まらず、E1は保存される。
     assert test_repo.payroll_result("E1", "2026-09") is not None
     assert test_repo.payroll_result("E2", "2026-09") is None
+
+
+def test_app_lifespan_runs_automatic_payroll_check(monkeypatch):
+    calls = []
+
+    def fake_auto_check(repo):
+        calls.append(repo)
+        return None
+
+    monkeypatch.setattr(main, "run_payroll_auto_check", fake_auto_check)
+
+    with TestClient(main.app):
+        pass
+
+    assert calls == [main.repo]
