@@ -107,3 +107,43 @@ def completed_payroll_month(today) -> str:
         month = today.month - 1
 
     return f"{year:04d}-{month:02d}"
+
+
+def run_due_payroll_batch(
+    repo: PayrollRepository,
+    today,
+) -> list[BatchPayrollItem] | None:
+    """終了済みの前月給与を未処理の場合だけ自動計算する。"""
+    year_month = completed_payroll_month(today)
+
+    if repo.auto_payroll_processed_month() == year_month:
+        return None
+
+    results = calculate_monthly_payrolls(
+        repo,
+        year_month,
+    )
+
+    repo.save_auto_payroll_processed_month(year_month)
+
+    return results
+
+
+def run_due_payroll_batch(
+    repo: PayrollRepository,
+    today,
+) -> list[BatchPayrollItem] | None:
+    """終了済みの前月給与を未処理の場合だけ自動計算する。"""
+    year_month = completed_payroll_month(today)
+
+    if repo.auto_payroll_processed_month() == year_month:
+        return None
+
+    results = calculate_monthly_payrolls(
+        repo,
+        year_month,
+    )
+
+    repo.save_auto_payroll_processed_month(year_month)
+
+    return results
