@@ -95,3 +95,15 @@ def calculate_monthly_payrolls(
             )
 
     return results
+
+
+def completed_payroll_month(today) -> str:
+    """最後まで終了している直前月を YYYY-MM で返す。"""
+    if today.month == 1:
+        year = today.year - 1
+        month = 12
+    else:
+        year = today.year
+        month = today.month - 1
+
+    return f"{year:04d}-{month:02d}"

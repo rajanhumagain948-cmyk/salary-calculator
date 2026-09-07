@@ -36,3 +36,11 @@ def test_batch_calculation_never_finalizes_payroll(tmp_path):
 
     assert saved is not None
     assert saved.finalized is False
+
+
+def test_completed_payroll_month_is_previous_month():
+    from services.payroll_batch_service import completed_payroll_month
+
+    assert completed_payroll_month(date(2026, 10, 1)) == "2026-09"
+    assert completed_payroll_month(date(2026, 9, 30)) == "2026-08"
+    assert completed_payroll_month(date(2026, 1, 1)) == "2025-12"
