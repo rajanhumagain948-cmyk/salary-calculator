@@ -82,3 +82,31 @@ def standard_entitlement_days(
         return Decimal("18")
 
     return Decimal("20")
+
+
+def proportional_entitlement_days(
+    weekly_days: int,
+    service_months: int,
+) -> Decimal:
+    """週所定労働日数1〜4日の短時間労働者向け比例付与日数。"""
+    if weekly_days not in (1, 2, 3, 4):
+        raise ValueError("weekly_days must be between 1 and 4")
+
+    if service_months < 6:
+        return Decimal("0")
+
+    schedules = {
+        4: (7, 8, 9, 10, 12, 13, 15),
+        3: (5, 6, 6, 8, 9, 10, 11),
+        2: (3, 4, 4, 5, 6, 6, 7),
+        1: (1, 2, 2, 2, 3, 3, 3),
+    }
+
+    thresholds = (6, 18, 30, 42, 54, 66, 78)
+
+    index = 0
+    for i, threshold in enumerate(thresholds):
+        if service_months >= threshold:
+            index = i
+
+    return Decimal(schedules[weekly_days][index])

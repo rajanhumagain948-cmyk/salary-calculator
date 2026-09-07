@@ -112,3 +112,25 @@ def test_standard_paid_leave_entitlement_days():
     assert standard_entitlement_days(66) == Decimal("18")
     assert standard_entitlement_days(78) == Decimal("20")
     assert standard_entitlement_days(120) == Decimal("20")
+
+
+def test_proportional_paid_leave_entitlement_days():
+    from services.leave_service import proportional_entitlement_days
+
+    # 継続勤務6か月
+    assert proportional_entitlement_days(4, 6) == Decimal("7")
+    assert proportional_entitlement_days(3, 6) == Decimal("5")
+    assert proportional_entitlement_days(2, 6) == Decimal("3")
+    assert proportional_entitlement_days(1, 6) == Decimal("1")
+
+    # 継続勤務1年6か月
+    assert proportional_entitlement_days(4, 18) == Decimal("8")
+    assert proportional_entitlement_days(3, 18) == Decimal("6")
+    assert proportional_entitlement_days(2, 18) == Decimal("4")
+    assert proportional_entitlement_days(1, 18) == Decimal("2")
+
+    # 6年6か月以上
+    assert proportional_entitlement_days(4, 78) == Decimal("15")
+    assert proportional_entitlement_days(3, 78) == Decimal("11")
+    assert proportional_entitlement_days(2, 78) == Decimal("7")
+    assert proportional_entitlement_days(1, 78) == Decimal("3")
