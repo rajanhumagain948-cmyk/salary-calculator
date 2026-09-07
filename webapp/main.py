@@ -1435,3 +1435,16 @@ def submit_my_leave_request(
     )
 
     return leave_request_to_dict(item)
+
+
+@app.get("/leave-requests")
+def get_all_leave_requests(request: Request):
+    user = require_user(request)
+
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="admin only")
+
+    return [
+        leave_request_to_dict(item)
+        for item in repo.leave_requests()
+    ]
