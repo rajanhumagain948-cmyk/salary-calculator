@@ -1,8 +1,10 @@
 import json
 import unicodedata
+import tempfile
 
 from fastapi import FastAPI, Form, HTTPException, Response, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from starlette.background import BackgroundTask
 from itsdangerous import URLSafeSerializer, BadSignature
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -21,6 +23,7 @@ from models.allowance import Allowance
 from models.deduction import OtherDeduction
 from models.transportation import Transportation
 from services.payroll_service import calculate_payroll
+from services.payslip_service import export_pdf
 
 app = FastAPI(title="Salary Calculator Web")
 app.add_middleware(
@@ -1209,3 +1212,68 @@ def finalize_payroll(
     repo.save_payroll_result(result)
 
     return payroll_result_to_dict(result)
+
+
+@app.get("/payroll/{year_month}/{employee_id}/pdf")
+def download_payroll_pdf(
+    year_month: str,
+    employee_id: str,
+    request: Request,
+):
+    user = require_user(request)
+
+    employee_id = normalize_input(employee_id)
+    year_month = normalize_input(year_month)
+
+    if user.role == "employee":
+        if not user.employee_id:
+            raise HTTPException(status_code=400, detail="employee_id not set")
+
+        if normalize_input(user.employee_id) != employee_id:
+            raise HTTPException(status_code=403, detail="forbidden")
+
+    result = repo.payroll_result(employee_id, year_month)
+
+    if result is None:
+        raise HTTPException(status_code=404, detail="payroll not found")
+
+    if user.role == "employee" and not result.finalized:
+        raise HTTPException(status_code=404, detail="payroll not found")
+
+    employee = next(
+        (
+            item
+            for item in repo.employees()
+            if item.employee_id == employee_id
+        ),
+        None,
+    )
+
+    if employee is None:
+        raise HTTPException(status_code=404, detail="employee not found")
+
+    temp = tempfile.NamedTemporaryFile(
+        prefix="payslip_",
+        suffix=".pdf",
+        delete=False,
+    )
+    temp_path = Path(temp.name)
+    temp.close()
+
+    try:
+        export_pdf(employee, result, temp_path)
+    except Exception:
+        temp_path.unlink(missing_ok=True)
+        raise
+
+    filename = f"payslip_{year_month}_{employee_id}.pdf"
+
+    return FileResponse(
+        path=temp_path,
+        media_type="application/pdf",
+        filename=filename,
+        background=BackgroundTask(
+            temp_path.unlink,
+            missing_ok=True,
+        ),
+    )

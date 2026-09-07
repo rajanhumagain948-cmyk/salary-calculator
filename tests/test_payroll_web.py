@@ -343,3 +343,58 @@ def test_employee_can_view_own_finalized_payroll(tmp_path, monkeypatch):
     assert data["gross_pay"] == "200000"
     assert data["net_pay"] == "196730"
     assert data["company_name"] == "テスト株式会社"
+
+
+def test_employee_can_download_own_finalized_payroll_pdf(
+    tmp_path,
+    monkeypatch,
+):
+    from datetime import date
+
+    from models.employee import Employee
+
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    test_repo.save_user(
+        User(
+            username="employee",
+            password_hash="unused",
+            role="employee",
+            employee_id="E1",
+        )
+    )
+
+    test_repo.save_employee(
+        Employee(
+            employee_id="E1",
+            name="給与明細テスト",
+            employment_type="正社員",
+            hire_date=date(2026, 1, 1),
+            pay_type="月給",
+            monthly_salary=Decimal("200000"),
+        )
+    )
+
+    test_repo.save_payroll_result(
+        PayrollResult(
+            employee_id="E1",
+            year_month="2026-08",
+            classification=TimeClassification(),
+            payments={"基本給": Decimal("200000")},
+            deductions={"所得税": Decimal("3270")},
+            finalized=True,
+            company_name="テスト株式会社",
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "employee"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.get("/payroll/2026-08/E1/pdf")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    assert response.content.startswith(b"%PDF")
+    assert len(response.content) > 0
