@@ -110,3 +110,25 @@ def proportional_entitlement_days(
             index = i
 
     return Decimal(schedules[weekly_days][index])
+
+
+def employee_entitlement_days(
+    employee,
+    service_months: int,
+) -> Decimal:
+    """従業員の週所定労働日数・時間から法定付与日数表を選択する。"""
+    weekly_days = employee.weekly_days
+    weekly_hours = employee.weekly_hours
+
+    if weekly_days >= 5 or weekly_hours >= Decimal("30"):
+        return standard_entitlement_days(service_months)
+
+    if weekly_days in (1, 2, 3, 4):
+        return proportional_entitlement_days(
+            weekly_days,
+            service_months,
+        )
+
+    raise ValueError(
+        "有給付与には週所定労働日数を1日以上設定してください。"
+    )

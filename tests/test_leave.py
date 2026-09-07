@@ -134,3 +134,41 @@ def test_proportional_paid_leave_entitlement_days():
     assert proportional_entitlement_days(3, 78) == Decimal("11")
     assert proportional_entitlement_days(2, 78) == Decimal("7")
     assert proportional_entitlement_days(1, 78) == Decimal("3")
+
+
+def test_employee_paid_leave_entitlement_selects_correct_schedule():
+    from models.employee import Employee
+    from services.leave_service import employee_entitlement_days
+
+    base = dict(
+        employee_id="E1",
+        name="有給テスト",
+        employment_type="パート",
+        hire_date=date(2026, 1, 1),
+        pay_type="時給",
+        hourly_rate=Decimal("1200"),
+    )
+
+    # 週4日かつ30時間未満 → 比例付与
+    proportional = Employee(
+        **base,
+        weekly_days=4,
+        weekly_hours=Decimal("29"),
+    )
+    assert employee_entitlement_days(proportional, 6) == Decimal("7")
+
+    # 週4日でも30時間以上 → 通常付与
+    thirty_hours = Employee(
+        **base,
+        weekly_days=4,
+        weekly_hours=Decimal("30"),
+    )
+    assert employee_entitlement_days(thirty_hours, 6) == Decimal("10")
+
+    # 週5日 → 通常付与
+    five_days = Employee(
+        **base,
+        weekly_days=5,
+        weekly_hours=Decimal("20"),
+    )
+    assert employee_entitlement_days(five_days, 6) == Decimal("10")
