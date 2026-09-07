@@ -99,3 +99,16 @@ def test_expired_leave_grant_is_not_in_current_balance(tmp_path):
 
     assert balance.granted_days == Decimal("11")
     assert balance.remaining_days == Decimal("11")
+
+
+def test_standard_paid_leave_entitlement_days():
+    from services.leave_service import standard_entitlement_days
+
+    assert standard_entitlement_days(6) == Decimal("10")
+    assert standard_entitlement_days(18) == Decimal("11")
+    assert standard_entitlement_days(30) == Decimal("12")
+    assert standard_entitlement_days(42) == Decimal("14")
+    assert standard_entitlement_days(54) == Decimal("16")
+    assert standard_entitlement_days(66) == Decimal("18")
+    assert standard_entitlement_days(78) == Decimal("20")
+    assert standard_entitlement_days(120) == Decimal("20")

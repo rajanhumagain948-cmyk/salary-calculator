@@ -60,3 +60,25 @@ def calculate_leave_balance(
         pending_days=pending_days,
         remaining_days=granted_days - used_days,
     )
+
+
+def standard_entitlement_days(
+    service_months: int,
+) -> Decimal:
+    """継続勤務月数から通常の年次有給休暇の法定付与日数を返す。"""
+    if service_months < 6:
+        return Decimal("0")
+    if service_months < 18:
+        return Decimal("10")
+    if service_months < 30:
+        return Decimal("11")
+    if service_months < 42:
+        return Decimal("12")
+    if service_months < 54:
+        return Decimal("14")
+    if service_months < 66:
+        return Decimal("16")
+    if service_months < 78:
+        return Decimal("18")
+
+    return Decimal("20")
