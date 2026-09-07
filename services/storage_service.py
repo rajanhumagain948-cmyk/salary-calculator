@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from models.leave_request import LeaveRequest
+from models.leave_grant import LeaveGrant
 from dataclasses import asdict
 from datetime import date, datetime
 from decimal import Decimal
@@ -115,6 +116,25 @@ class PayrollRepository:
         )
         self.connection.execute(
             """
+            CREATE TABLE IF NOT EXISTS leave_grants (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                employee_id TEXT NOT NULL,
+                grant_date TEXT NOT NULL,
+                granted_days TEXT NOT NULL,
+                expires_on TEXT NOT NULL
+            )
+            """
+        )
+
+        self.connection.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_leave_grants_employee_date
+            ON leave_grants(employee_id, grant_date)
+            """
+        )
+
+        self.connection.execute(
+            """
             CREATE TABLE IF NOT EXISTS leave_requests (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 employee_id TEXT NOT NULL,
@@ -171,6 +191,54 @@ class PayrollRepository:
             ensure_ascii=False,
             default=lambda o: str(o),
         )
+
+    def save_leave_grant(
+        self,
+        grant: LeaveGrant,
+    ) -> LeaveGrant:
+        cursor = self.connection.execute(
+            """
+            INSERT INTO leave_grants
+            (employee_id, grant_date, granted_days, expires_on)
+            VALUES (?, ?, ?, ?)
+            """,
+            (
+                grant.employee_id,
+                grant.grant_date.isoformat(),
+                str(grant.granted_days),
+                grant.expires_on.isoformat(),
+            ),
+        )
+
+        self.connection.commit()
+        grant.grant_id = cursor.lastrowid
+
+        return grant
+
+    def leave_grants(
+        self,
+        employee_id: str,
+    ) -> list[LeaveGrant]:
+        rows = self.connection.execute(
+            """
+            SELECT id, employee_id, grant_date, granted_days, expires_on
+            FROM leave_grants
+            WHERE employee_id = ?
+            ORDER BY grant_date, id
+            """,
+            (employee_id,),
+        ).fetchall()
+
+        return [
+            LeaveGrant(
+                grant_id=row[0],
+                employee_id=row[1],
+                grant_date=date.fromisoformat(row[2]),
+                granted_days=Decimal(row[3]),
+                expires_on=date.fromisoformat(row[4]),
+            )
+            for row in rows
+        ]
 
     def save_leave_request(self, request: LeaveRequest) -> LeaveRequest:
         created_at = request.created_at or datetime.now()
