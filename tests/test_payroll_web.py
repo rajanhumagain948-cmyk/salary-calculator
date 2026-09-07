@@ -608,3 +608,58 @@ def test_batch_payroll_does_not_recalculate_finalized_payroll(
     assert saved.finalized is True
     assert saved.payments["基本給"] == Decimal("200000")
     assert saved.deductions["所得税"] == Decimal("3270")
+
+
+def test_batch_payroll_marks_warning_as_needs_review(
+    tmp_path,
+    monkeypatch,
+):
+    from datetime import date
+
+    from models.employee import Employee
+
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    test_repo.save_user(
+        User(
+            username="admin",
+            password_hash="unused",
+            role="admin",
+        )
+    )
+
+    test_repo.save_employee(
+        Employee(
+            employee_id="E1",
+            name="要確認社員",
+            employment_type="パート",
+            hire_date=date(2026, 1, 1),
+            pay_type="時給",
+            hourly_rate=Decimal("1200"),
+            weekly_hours=Decimal("20"),
+            workplace_size=20,
+            standard_monthly_remuneration=Decimal("0"),
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "admin"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.post(
+        "/payroll/calculate-all",
+        data={"year_month": "2026-09"},
+    )
+
+    assert response.status_code == 200
+
+    item = response.json()["results"][0]
+
+    assert item["employee_id"] == "E1"
+    assert item["status"] == "要確認"
+    assert item["payroll"] is not None
+    assert (
+        "標準報酬月額が未登録のため、今月の総支給額を暫定使用しています。"
+        in item["payroll"]["warnings"]
+    )
