@@ -770,6 +770,41 @@ class PayrollRepository:
         )
 
     # ------------------------------------------------------------------
+    # Automatic payroll
+    # ------------------------------------------------------------------
+
+    def save_auto_payroll_processed_month(
+        self,
+        year_month: str,
+    ) -> None:
+        self.connection.execute(
+            """
+            INSERT OR REPLACE INTO settings
+            VALUES (?, ?)
+            """,
+            (
+                "auto_payroll_processed_month",
+                year_month,
+            ),
+        )
+        self.connection.commit()
+
+    def auto_payroll_processed_month(self) -> str | None:
+        row = self.connection.execute(
+            """
+            SELECT payload
+            FROM settings
+            WHERE key = ?
+            """,
+            ("auto_payroll_processed_month",),
+        ).fetchone()
+
+        if not row:
+            return None
+
+        return row[0]
+
+    # ------------------------------------------------------------------
     # Audit
     # ------------------------------------------------------------------
 

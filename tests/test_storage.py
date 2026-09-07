@@ -149,3 +149,19 @@ def test_finalized_payroll_cannot_be_overwritten_by_another_finalized_result():
         assert saved.finalized is True
         assert saved.payments["基本給"] == Decimal("200000")
         assert saved.deductions["所得税"] == Decimal("3270")
+
+
+def test_auto_payroll_processed_month_is_persisted():
+    with TemporaryDirectory() as folder:
+        path = Path(folder) / "payroll.sqlite3"
+
+        repo = PayrollRepository(path)
+
+        assert repo.auto_payroll_processed_month() is None
+
+        repo.save_auto_payroll_processed_month("2026-09")
+
+        # Repositoryを作り直しても実行履歴が残る。
+        repo = PayrollRepository(path)
+
+        assert repo.auto_payroll_processed_month() == "2026-09"
