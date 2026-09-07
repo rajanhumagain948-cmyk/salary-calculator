@@ -91,6 +91,34 @@ export default function PayrollPage() {
     },
   });
   const [savingInputs, setSavingInputs] = useState(false);
+  const [monthlyResults, setMonthlyResults] = useState<PayrollResult[]>([]);
+  const [loadingMonthlyResults, setLoadingMonthlyResults] = useState(false);
+
+  async function loadMonthlyResults(month = yearMonth) {
+    setLoadingMonthlyResults(true);
+
+    try {
+      const res = await fetch(
+        `${API_BASE}/payroll-results/${month}`,
+        {
+          credentials: "include",
+          cache: "no-store",
+        }
+      );
+
+      if (!res.ok) {
+        setError(`月別給与一覧を取得できませんでした: ${res.status}`);
+        return;
+      }
+
+      const data = await res.json();
+      setMonthlyResults(data.results ?? []);
+    } catch {
+      setError("月別給与一覧の取得中に通信エラーが発生しました。");
+    } finally {
+      setLoadingMonthlyResults(false);
+    }
+  }
 
   async function loadEmployees() {
     try {
@@ -333,6 +361,7 @@ export default function PayrollPage() {
       }
 
       setResult(await res.json());
+      await loadMonthlyResults(yearMonth);
       setMessage("給与を確定しました。従業員の給与明細に反映されます。");
     } catch {
       setError("給与確定中に通信エラーが発生しました。");
@@ -350,6 +379,8 @@ export default function PayrollPage() {
   }, []);
 
   useEffect(() => {
+    loadMonthlyResults(yearMonth);
+
     if (selected) {
       loadPayrollInputs(selected, yearMonth);
       loadExistingPayroll(selected, yearMonth);
@@ -413,6 +444,158 @@ export default function PayrollPage() {
 
         {error && <div style={errorStyle}>{error}</div>}
         {message && <div style={successStyle}>{message}</div>}
+
+        <section
+          style={{
+            ...panelStyle,
+            marginBottom: 18,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 16,
+              marginBottom: 14,
+            }}
+          >
+            <div>
+              <div style={eyebrowStyle}>月次給与</div>
+              <h2 style={{ margin: "5px 0", fontSize: 18 }}>
+                {yearMonth} 給与処理状況
+              </h2>
+              <div style={{ color: "#71879d", fontSize: 10 }}>
+                月次自動計算された給与を確認し、個別に確定します。
+              </div>
+            </div>
+
+            <button
+              onClick={() => loadMonthlyResults(yearMonth)}
+              disabled={loadingMonthlyResults}
+              style={{
+                padding: "8px 13px",
+                border: "1px solid rgba(109,124,255,.25)",
+                borderRadius: 9,
+                color: "#c7ceff",
+                background: "rgba(109,124,255,.08)",
+                cursor: loadingMonthlyResults ? "wait" : "pointer",
+              }}
+            >
+              {loadingMonthlyResults ? "更新中..." : "一覧を更新"}
+            </button>
+          </div>
+
+          {monthlyResults.length === 0 ? (
+            <div
+              style={{
+                padding: 20,
+                textAlign: "center",
+                color: "#71879d",
+                fontSize: 11,
+              }}
+            >
+              この月の給与計算結果はまだありません。
+            </div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  fontSize: 11,
+                }}
+              >
+                <thead>
+                  <tr style={{ color: "#71879d", textAlign: "left" }}>
+                    <th style={tableCellStyle}>社員</th>
+                    <th style={tableCellStyle}>状態</th>
+                    <th style={tableCellStyle}>総支給</th>
+                    <th style={tableCellStyle}>控除</th>
+                    <th style={tableCellStyle}>手取り</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {monthlyResults.map((item) => {
+                    const employee = employees.find(
+                      (e) => e.employee_id === item.employee_id
+                    );
+
+                    const status = item.finalized
+                      ? "確定済"
+                      : item.blocking_issues.length > 0
+                        ? "確定不可"
+                        : item.warnings.length > 0
+                          ? "要確認"
+                          : "未確定";
+
+                    const color =
+                      status === "確定済"
+                        ? "#65e6b5"
+                        : status === "確定不可"
+                          ? "#ff9aa6"
+                          : status === "要確認"
+                            ? "#f6c85f"
+                            : "#9ba5ff";
+
+                    return (
+                      <tr
+                        key={item.employee_id}
+                        onClick={() => {
+                          if (employee) selectEmployee(employee);
+                        }}
+                        style={{
+                          borderTop:
+                            "1px solid rgba(148,180,216,.08)",
+                          cursor: employee ? "pointer" : "default",
+                        }}
+                      >
+                        <td style={tableCellStyle}>
+                          <strong>
+                            {employee?.name ?? item.employee_id}
+                          </strong>
+                          <div
+                            style={{
+                              color: "#71879d",
+                              fontSize: 9,
+                              marginTop: 2,
+                            }}
+                          >
+                            {item.employee_id}
+                          </div>
+                        </td>
+
+                        <td style={tableCellStyle}>
+                          <span style={{ color, fontWeight: 800 }}>
+                            {status}
+                          </span>
+                        </td>
+
+                        <td style={tableCellStyle}>
+                          {money(item.gross_pay)}
+                        </td>
+
+                        <td style={tableCellStyle}>
+                          {money(item.total_deductions)}
+                        </td>
+
+                        <td
+                          style={{
+                            ...tableCellStyle,
+                            color: "#65e6b5",
+                            fontWeight: 800,
+                          }}
+                        >
+                          {money(item.net_pay)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
 
         <div
           style={{
@@ -1200,6 +1383,10 @@ const emptyInputStyle = {
   border: "1px dashed rgba(148,180,216,.10)",
   borderRadius: 9,
 } as const;
+
+const tableCellStyle = {
+  padding: "11px 10px",
+};
 
 const panelStyle = {
   padding: 17,
