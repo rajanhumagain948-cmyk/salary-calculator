@@ -299,3 +299,47 @@ def test_employee_cannot_view_another_employees_finalized_payroll(
     response = client.get("/payroll/2026-08/E2")
 
     assert response.status_code == 403
+
+
+def test_employee_can_view_own_finalized_payroll(tmp_path, monkeypatch):
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    test_repo.save_user(
+        User(
+            username="employee",
+            password_hash="unused",
+            role="employee",
+            employee_id="E1",
+        )
+    )
+
+    test_repo.save_payroll_result(
+        PayrollResult(
+            employee_id="E1",
+            year_month="2026-08",
+            classification=TimeClassification(),
+            payments={"基本給": Decimal("200000")},
+            deductions={"所得税": Decimal("3270")},
+            finalized=True,
+            company_name="テスト株式会社",
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "employee"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.get("/payroll/2026-08/E1")
+
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["employee_id"] == "E1"
+    assert data["year_month"] == "2026-08"
+    assert data["finalized"] is True
+    assert data["payments"]["基本給"] == "200000"
+    assert data["deductions"]["所得税"] == "3270"
+    assert data["gross_pay"] == "200000"
+    assert data["net_pay"] == "196730"
+    assert data["company_name"] == "テスト株式会社"
