@@ -93,3 +93,46 @@ def test_admin_cannot_finalize_payroll_with_blocking_issues(tmp_path, monkeypatc
     assert saved is not None
     assert saved.finalized is False
     assert saved.blocking_issues == ["勤怠に未確認の問題があります。"]
+
+
+def test_employee_cannot_finalize_payroll(tmp_path, monkeypatch):
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    test_repo.save_user(
+        User(
+            username="employee",
+            password_hash="unused",
+            role="employee",
+            employee_id="E1",
+        )
+    )
+
+    test_repo.save_payroll_result(
+        PayrollResult(
+            employee_id="E1",
+            year_month="2026-08",
+            classification=TimeClassification(),
+            payments={"基本給": Decimal("200000")},
+            deductions={"所得税": Decimal("3270")},
+            blocking_issues=[],
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "employee"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.post(
+        "/payroll/finalize",
+        data={
+            "employee_id": "E1",
+            "year_month": "2026-08",
+        },
+    )
+
+    assert response.status_code == 403
+
+    saved = test_repo.payroll_result("E1", "2026-08")
+    assert saved is not None
+    assert saved.finalized is False
