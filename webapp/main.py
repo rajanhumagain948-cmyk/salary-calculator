@@ -1277,3 +1277,106 @@ def download_payroll_pdf(
             missing_ok=True,
         ),
     )
+
+
+@app.post("/payroll/calculate-all")
+def calculate_all_employee_payrolls(
+    request: Request,
+    year_month: str = Form(...),
+):
+    user = require_user(request)
+
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="admin only")
+
+    year_month = normalize_input(year_month)
+
+    try:
+        year, month = year_month.split("-")
+        if len(year) != 4 or len(month) != 2:
+            raise ValueError
+        date(int(year), int(month), 1)
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail="year_month must be YYYY-MM",
+        ) from error
+
+    results = []
+
+    for employee in repo.employees():
+        existing = repo.payroll_result(
+            employee.employee_id,
+            year_month,
+        )
+
+        # 確定済み給与はスナップショットを維持し、再計算しない。
+        if existing is not None and existing.finalized:
+            results.append(
+                {
+                    "employee_id": employee.employee_id,
+                    "name": employee.name,
+                    "status": "確定済",
+                    "payroll": payroll_result_to_dict(existing),
+                    "error": None,
+                }
+            )
+            continue
+
+        try:
+            terms = repo.terms(employee.employee_id)
+            records = repo.work_records(
+                employee.employee_id,
+                year_month,
+            )
+            allowances, deductions, transport = repo.monthly_inputs(
+                employee.employee_id,
+                year_month,
+            )
+
+            transport.attendance_days = len(records)
+
+            result = calculate_payroll(
+                employee=employee,
+                terms=terms,
+                records=records,
+                allowances=allowances,
+                transport=transport,
+                other_deductions=deductions,
+                year_month=year_month,
+            )
+
+            result.company_name = repo.company().name
+            repo.save_payroll_result(result)
+
+            status = (
+                "要確認"
+                if result.blocking_issues or result.warnings
+                else "正常"
+            )
+
+            results.append(
+                {
+                    "employee_id": employee.employee_id,
+                    "name": employee.name,
+                    "status": status,
+                    "payroll": payroll_result_to_dict(result),
+                    "error": None,
+                }
+            )
+
+        except (ValueError, TypeError) as error:
+            results.append(
+                {
+                    "employee_id": employee.employee_id,
+                    "name": employee.name,
+                    "status": "計算不可",
+                    "payroll": None,
+                    "error": str(error),
+                }
+            )
+
+    return {
+        "year_month": year_month,
+        "results": results,
+    }

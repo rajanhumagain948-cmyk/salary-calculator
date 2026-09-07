@@ -468,3 +468,74 @@ def test_employee_cannot_download_own_unfinalized_payroll_pdf(
     response = client.get("/payroll/2026-08/E1/pdf")
 
     assert response.status_code == 404
+
+
+def test_admin_can_calculate_all_employees_payroll(tmp_path, monkeypatch):
+    from datetime import date
+
+    from models.employee import Employee
+
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    test_repo.save_user(
+        User(
+            username="admin",
+            password_hash="unused",
+            role="admin",
+        )
+    )
+
+    test_repo.save_employee(
+        Employee(
+            employee_id="E1",
+            name="社員1",
+            employment_type="正社員",
+            hire_date=date(2026, 1, 1),
+            pay_type="月給",
+            monthly_salary=Decimal("200000"),
+            weekly_hours=Decimal("40"),
+            weekly_days=5,
+            workplace_size=100,
+            dependents=0,
+            tax_category="甲",
+            standard_monthly_remuneration=Decimal("200000"),
+        )
+    )
+
+    test_repo.save_employee(
+        Employee(
+            employee_id="E2",
+            name="社員2",
+            employment_type="正社員",
+            hire_date=date(2026, 1, 1),
+            pay_type="月給",
+            monthly_salary=Decimal("250000"),
+            weekly_hours=Decimal("40"),
+            weekly_days=5,
+            workplace_size=100,
+            dependents=0,
+            tax_category="甲",
+            standard_monthly_remuneration=Decimal("250000"),
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "admin"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.post(
+        "/payroll/calculate-all",
+        data={"year_month": "2026-09"},
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["year_month"] == "2026-09"
+    assert len(data["results"]) == 2
+    assert [item["employee_id"] for item in data["results"]] == ["E1", "E2"]
+
+    assert test_repo.payroll_result("E1", "2026-09") is not None
+    assert test_repo.payroll_result("E2", "2026-09") is not None
