@@ -1397,3 +1397,41 @@ def get_my_leave_requests(request: Request):
         leave_request_to_dict(item)
         for item in repo.leave_requests(employee_id)
     ]
+
+
+@app.post("/my/leave-requests")
+def submit_my_leave_request(
+    request: Request,
+    leave_date: str = Form(...),
+    reason: str = Form(""),
+):
+    user = require_user(request)
+
+    if user.role != "employee":
+        raise HTTPException(status_code=403, detail="employee only")
+
+    if not user.employee_id:
+        raise HTTPException(status_code=400, detail="employee_id not set")
+
+    employee_id = normalize_input(user.employee_id)
+    leave_date = normalize_input(leave_date)
+    reason = normalize_input(reason)
+
+    try:
+        parsed_date = date.fromisoformat(leave_date)
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail="leave_date must be YYYY-MM-DD",
+        ) from error
+
+    item = repo.save_leave_request(
+        LeaveRequest(
+            employee_id=employee_id,
+            leave_date=parsed_date,
+            reason=reason,
+            status="申請中",
+        )
+    )
+
+    return leave_request_to_dict(item)
