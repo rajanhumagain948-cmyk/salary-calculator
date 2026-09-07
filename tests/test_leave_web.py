@@ -136,3 +136,79 @@ def test_admin_can_list_all_leave_requests(tmp_path, monkeypatch):
 
     assert len(data) == 2
     assert {item["employee_id"] for item in data} == {"E1", "E2"}
+
+
+def test_admin_can_approve_leave_request(tmp_path, monkeypatch):
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    test_repo.save_user(
+        User(
+            username="admin",
+            password_hash="unused",
+            role="admin",
+        )
+    )
+
+    item = test_repo.save_leave_request(
+        LeaveRequest(
+            employee_id="E1",
+            leave_date=date(2026, 9, 15),
+            reason="私用",
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "admin"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.post(
+        f"/leave-requests/{item.request_id}/status",
+        data={"status": "承認"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "承認"
+
+    saved = test_repo.leave_requests("E1")
+
+    assert len(saved) == 1
+    assert saved[0].status == "承認"
+
+
+def test_employee_cannot_approve_leave_request(tmp_path, monkeypatch):
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    test_repo.save_user(
+        User(
+            username="employee",
+            password_hash="unused",
+            role="employee",
+            employee_id="E1",
+        )
+    )
+
+    item = test_repo.save_leave_request(
+        LeaveRequest(
+            employee_id="E1",
+            leave_date=date(2026, 9, 15),
+            reason="私用",
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "employee"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.post(
+        f"/leave-requests/{item.request_id}/status",
+        data={"status": "承認"},
+    )
+
+    assert response.status_code == 403
+
+    saved = test_repo.leave_requests("E1")
+
+    assert len(saved) == 1
+    assert saved[0].status == "申請中"

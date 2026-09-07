@@ -1448,3 +1448,48 @@ def get_all_leave_requests(request: Request):
         leave_request_to_dict(item)
         for item in repo.leave_requests()
     ]
+
+
+@app.post("/leave-requests/{request_id}/status")
+def update_leave_request_status(
+    request_id: int,
+    request: Request,
+    status: str = Form(...),
+):
+    user = require_user(request)
+
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="admin only")
+
+    status = normalize_input(status)
+
+    if status not in ("承認", "却下"):
+        raise HTTPException(
+            status_code=400,
+            detail="status must be 承認 or 却下",
+        )
+
+    existing = next(
+        (
+            item
+            for item in repo.leave_requests()
+            if item.request_id == request_id
+        ),
+        None,
+    )
+
+    if existing is None:
+        raise HTTPException(
+            status_code=404,
+            detail="leave request not found",
+        )
+
+    repo.update_leave_status(request_id, status)
+
+    updated = next(
+        item
+        for item in repo.leave_requests()
+        if item.request_id == request_id
+    )
+
+    return leave_request_to_dict(updated)
