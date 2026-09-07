@@ -23,6 +23,7 @@ from models.allowance import Allowance
 from models.deduction import OtherDeduction
 from models.transportation import Transportation
 from services.payroll_service import calculate_payroll
+from services.payroll_batch_service import calculate_monthly_payrolls
 from services.payslip_service import export_pdf
 
 app = FastAPI(title="Salary Calculator Web")
@@ -1302,81 +1303,22 @@ def calculate_all_employee_payrolls(
             detail="year_month must be YYYY-MM",
         ) from error
 
-    results = []
-
-    for employee in repo.employees():
-        existing = repo.payroll_result(
-            employee.employee_id,
-            year_month,
-        )
-
-        # 確定済み給与はスナップショットを維持し、再計算しない。
-        if existing is not None and existing.finalized:
-            results.append(
-                {
-                    "employee_id": employee.employee_id,
-                    "name": employee.name,
-                    "status": "確定済",
-                    "payroll": payroll_result_to_dict(existing),
-                    "error": None,
-                }
-            )
-            continue
-
-        try:
-            terms = repo.terms(employee.employee_id)
-            records = repo.work_records(
-                employee.employee_id,
-                year_month,
-            )
-            allowances, deductions, transport = repo.monthly_inputs(
-                employee.employee_id,
-                year_month,
-            )
-
-            transport.attendance_days = len(records)
-
-            result = calculate_payroll(
-                employee=employee,
-                terms=terms,
-                records=records,
-                allowances=allowances,
-                transport=transport,
-                other_deductions=deductions,
-                year_month=year_month,
-            )
-
-            result.company_name = repo.company().name
-            repo.save_payroll_result(result)
-
-            status = (
-                "要確認"
-                if result.blocking_issues or result.warnings
-                else "正常"
-            )
-
-            results.append(
-                {
-                    "employee_id": employee.employee_id,
-                    "name": employee.name,
-                    "status": status,
-                    "payroll": payroll_result_to_dict(result),
-                    "error": None,
-                }
-            )
-
-        except (ValueError, TypeError) as error:
-            results.append(
-                {
-                    "employee_id": employee.employee_id,
-                    "name": employee.name,
-                    "status": "計算不可",
-                    "payroll": None,
-                    "error": str(error),
-                }
-            )
+    batch_results = calculate_monthly_payrolls(repo, year_month)
 
     return {
         "year_month": year_month,
-        "results": results,
+        "results": [
+            {
+                "employee_id": item.employee_id,
+                "name": item.name,
+                "status": item.status,
+                "payroll": (
+                    payroll_result_to_dict(item.payroll)
+                    if item.payroll is not None
+                    else None
+                ),
+                "error": item.error,
+            }
+            for item in batch_results
+        ],
     }
