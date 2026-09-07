@@ -1,0 +1,54 @@
+from datetime import date
+
+from fastapi.testclient import TestClient
+
+import webapp.main as main
+from models.leave_request import LeaveRequest
+from models.user import User
+from services.storage_service import PayrollRepository
+
+
+def test_employee_can_list_only_own_leave_requests(tmp_path, monkeypatch):
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    test_repo.save_user(
+        User(
+            username="employee",
+            password_hash="unused",
+            role="employee",
+            employee_id="E1",
+        )
+    )
+
+    test_repo.save_leave_request(
+        LeaveRequest(
+            employee_id="E1",
+            leave_date=date(2026, 9, 15),
+            reason="私用",
+        )
+    )
+
+    test_repo.save_leave_request(
+        LeaveRequest(
+            employee_id="E2",
+            leave_date=date(2026, 9, 16),
+            reason="他人の申請",
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "employee"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.get("/my/leave-requests")
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert len(data) == 1
+    assert data[0]["employee_id"] == "E1"
+    assert data[0]["leave_date"] == "2026-09-15"
+    assert data[0]["reason"] == "私用"
+    assert data[0]["status"] == "申請中"

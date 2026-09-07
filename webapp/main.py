@@ -18,6 +18,7 @@ from decimal import Decimal
 from models.break_record import BreakRecord
 from models.company import Company
 from models.employee import Employee
+from models.leave_request import LeaveRequest
 from models.shifts import Shift
 from models.work_record import WorkRecord
 from models.allowance import Allowance
@@ -1362,3 +1363,37 @@ def list_payroll_results(
             for result in repo.payroll_results(year_month)
         ],
     }
+
+
+
+def leave_request_to_dict(item: LeaveRequest) -> dict:
+    return {
+        "request_id": item.request_id,
+        "employee_id": item.employee_id,
+        "leave_date": item.leave_date.isoformat(),
+        "reason": item.reason,
+        "status": item.status,
+        "created_at": (
+            item.created_at.isoformat()
+            if item.created_at is not None
+            else None
+        ),
+    }
+
+
+@app.get("/my/leave-requests")
+def get_my_leave_requests(request: Request):
+    user = require_user(request)
+
+    if user.role != "employee":
+        raise HTTPException(status_code=403, detail="employee only")
+
+    if not user.employee_id:
+        raise HTTPException(status_code=400, detail="employee_id not set")
+
+    employee_id = normalize_input(user.employee_id)
+
+    return [
+        leave_request_to_dict(item)
+        for item in repo.leave_requests(employee_id)
+    ]
