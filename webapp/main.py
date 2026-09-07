@@ -993,6 +993,9 @@ def get_payroll_result(
     if result is None:
         raise HTTPException(status_code=404, detail="payroll not found")
 
+    if user.role == "employee" and not result.finalized:
+        raise HTTPException(status_code=404, detail="payroll not found")
+
     return payroll_result_to_dict(result)
 
 
