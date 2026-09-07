@@ -931,6 +931,14 @@ def calculate_employee_payroll(
             detail="year_month must be YYYY-MM",
         ) from error
 
+    existing_result = repo.payroll_result(employee_id, year_month)
+
+    if existing_result is not None and existing_result.finalized:
+        raise HTTPException(
+            status_code=409,
+            detail="確定済みの給与は再計算できません。",
+        )
+
     terms = repo.terms(employee_id)
     records = repo.work_records(employee_id, year_month)
     allowances, deductions, transport = repo.monthly_inputs(
