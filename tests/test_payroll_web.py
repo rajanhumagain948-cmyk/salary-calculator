@@ -136,3 +136,35 @@ def test_employee_cannot_finalize_payroll(tmp_path, monkeypatch):
     saved = test_repo.payroll_result("E1", "2026-08")
     assert saved is not None
     assert saved.finalized is False
+
+
+def test_cannot_finalize_payroll_before_calculation(tmp_path, monkeypatch):
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    test_repo.save_user(
+        User(
+            username="admin",
+            password_hash="unused",
+            role="admin",
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "admin"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.post(
+        "/payroll/finalize",
+        data={
+            "employee_id": "E-NOT-CALCULATED",
+            "year_month": "2026-08",
+        },
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "先に給与を計算してください。"
+    assert test_repo.payroll_result(
+        "E-NOT-CALCULATED",
+        "2026-08",
+    ) is None
