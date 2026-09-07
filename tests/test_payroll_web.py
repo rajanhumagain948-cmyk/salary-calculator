@@ -398,3 +398,38 @@ def test_employee_can_download_own_finalized_payroll_pdf(
     assert response.headers["content-type"] == "application/pdf"
     assert response.content.startswith(b"%PDF")
     assert len(response.content) > 0
+
+
+def test_employee_cannot_download_another_employees_payroll_pdf(
+    tmp_path,
+    monkeypatch,
+):
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    test_repo.save_user(
+        User(
+            username="employee",
+            password_hash="unused",
+            role="employee",
+            employee_id="E1",
+        )
+    )
+
+    test_repo.save_payroll_result(
+        PayrollResult(
+            employee_id="E2",
+            year_month="2026-08",
+            classification=TimeClassification(),
+            payments={"基本給": Decimal("300000")},
+            finalized=True,
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "employee"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.get("/payroll/2026-08/E2/pdf")
+
+    assert response.status_code == 403
