@@ -66,3 +66,36 @@ def test_leave_balance_subtracts_only_approved_requests(tmp_path):
     assert balance.used_days == Decimal("2")
     assert balance.pending_days == Decimal("1")
     assert balance.remaining_days == Decimal("8")
+
+
+def test_expired_leave_grant_is_not_in_current_balance(tmp_path):
+    from services.leave_service import calculate_leave_balance
+
+    repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+
+    repo.save_leave_grant(
+        LeaveGrant(
+            employee_id="E1",
+            grant_date=date(2024, 7, 1),
+            granted_days=Decimal("10"),
+            expires_on=date(2026, 6, 30),
+        )
+    )
+
+    repo.save_leave_grant(
+        LeaveGrant(
+            employee_id="E1",
+            grant_date=date(2026, 7, 1),
+            granted_days=Decimal("11"),
+            expires_on=date(2028, 6, 30),
+        )
+    )
+
+    balance = calculate_leave_balance(
+        repo,
+        "E1",
+        date(2026, 9, 30),
+    )
+
+    assert balance.granted_days == Decimal("11")
+    assert balance.remaining_days == Decimal("11")
