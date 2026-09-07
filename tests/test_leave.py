@@ -172,3 +172,15 @@ def test_employee_paid_leave_entitlement_selects_correct_schedule():
         weekly_hours=Decimal("20"),
     )
     assert employee_entitlement_days(five_days, 6) == Decimal("10")
+
+
+def test_paid_leave_grant_date_schedule_handles_month_end():
+    from services.leave_service import leave_grant_date
+
+    # 通常ケース
+    assert leave_grant_date(date(2026, 1, 1), 0) == date(2026, 7, 1)
+    assert leave_grant_date(date(2026, 1, 1), 1) == date(2027, 7, 1)
+
+    # 月末入社でも存在しない日付にならない
+    assert leave_grant_date(date(2026, 8, 31), 0) == date(2027, 2, 28)
+    assert leave_grant_date(date(2027, 8, 31), 0) == date(2028, 2, 29)

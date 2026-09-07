@@ -132,3 +132,30 @@ def employee_entitlement_days(
     raise ValueError(
         "有給付与には週所定労働日数を1日以上設定してください。"
     )
+
+
+def leave_grant_date(
+    hire_date: date,
+    grant_index: int,
+) -> date:
+    """初回6か月後、以後12か月ごとの法定付与予定日を返す。"""
+    import calendar
+
+    if grant_index < 0:
+        raise ValueError("grant_index must be 0 or greater")
+
+    months_to_add = 6 + (grant_index * 12)
+
+    month_index = (
+        hire_date.year * 12
+        + (hire_date.month - 1)
+        + months_to_add
+    )
+
+    year = month_index // 12
+    month = month_index % 12 + 1
+
+    last_day = calendar.monthrange(year, month)[1]
+    day = min(hire_date.day, last_day)
+
+    return date(year, month, day)
