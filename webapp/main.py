@@ -1158,3 +1158,43 @@ def save_payroll_inputs(
         "deductions": len(deductions),
         "transport_amount": str(transport.amount),
     }
+
+
+@app.post("/payroll/finalize")
+def finalize_payroll(
+    request: Request,
+    employee_id: str = Form(...),
+    year_month: str = Form(...),
+):
+    user = require_user(request)
+
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="admin only")
+
+    employee_id = normalize_input(employee_id)
+    year_month = normalize_input(year_month)
+
+    result = repo.payroll_result(employee_id, year_month)
+
+    if result is None:
+        raise HTTPException(
+            status_code=404,
+            detail="先に給与を計算してください。",
+        )
+
+    if result.blocking_issues:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "要対応の問題があるため給与を確定できません。",
+                "blocking_issues": result.blocking_issues,
+            },
+        )
+
+    if result.finalized:
+        return payroll_result_to_dict(result)
+
+    result.finalized = True
+    repo.save_payroll_result(result)
+
+    return payroll_result_to_dict(result)
