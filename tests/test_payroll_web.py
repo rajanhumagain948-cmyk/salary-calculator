@@ -663,3 +663,81 @@ def test_batch_payroll_marks_warning_as_needs_review(
         "標準報酬月額が未登録のため、今月の総支給額を暫定使用しています。"
         in item["payroll"]["warnings"]
     )
+
+
+def test_batch_payroll_marks_calculation_error_as_unavailable(
+    tmp_path,
+    monkeypatch,
+):
+    from datetime import date
+
+    from models.employee import Employee
+
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    test_repo.save_user(
+        User(
+            username="admin",
+            password_hash="unused",
+            role="admin",
+        )
+    )
+
+    # 正常に計算できる社員
+    test_repo.save_employee(
+        Employee(
+            employee_id="E1",
+            name="正常社員",
+            employment_type="正社員",
+            hire_date=date(2026, 1, 1),
+            pay_type="月給",
+            monthly_salary=Decimal("200000"),
+            weekly_hours=Decimal("40"),
+            weekly_days=5,
+            workplace_size=100,
+            standard_monthly_remuneration=Decimal("200000"),
+        )
+    )
+
+    # 給与額が不正で計算できない社員
+    test_repo.save_employee(
+        Employee(
+            employee_id="E2",
+            name="計算不可社員",
+            employment_type="正社員",
+            hire_date=date(2026, 1, 1),
+            pay_type="月給",
+            monthly_salary=Decimal("-1"),
+            weekly_hours=Decimal("40"),
+            weekly_days=5,
+            workplace_size=100,
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "admin"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.post(
+        "/payroll/calculate-all",
+        data={"year_month": "2026-09"},
+    )
+
+    assert response.status_code == 200
+
+    results = {
+        item["employee_id"]: item
+        for item in response.json()["results"]
+    }
+
+    assert results["E1"]["status"] in ("正常", "要確認")
+    assert results["E1"]["payroll"] is not None
+
+    assert results["E2"]["status"] == "計算不可"
+    assert results["E2"]["payroll"] is None
+    assert "時給・月給は0円以上で入力してください。" in results["E2"]["error"]
+
+    # E2の失敗で一括処理全体が止まらず、E1は保存される。
+    assert test_repo.payroll_result("E1", "2026-09") is not None
+    assert test_repo.payroll_result("E2", "2026-09") is None
