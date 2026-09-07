@@ -595,9 +595,9 @@ class PayrollRepository:
 
         if existing:
             existing_data = json.loads(existing[0])
-            if existing_data.get("finalized") and not result.finalized:
+            if existing_data.get("finalized"):
                 raise ValueError(
-                    "確定済みの給与は未確定結果で上書きできません。"
+                    "確定済みの給与は上書きできません。"
                 )
 
         self.connection.execute(

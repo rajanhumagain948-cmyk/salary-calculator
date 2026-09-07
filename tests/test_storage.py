@@ -107,3 +107,45 @@ def test_finalized_payroll_cannot_be_overwritten_by_unfinalized_result():
         assert saved.finalized is True
         assert saved.payments["基本給"] == Decimal("200000")
         assert saved.deductions["所得税"] == Decimal("3270")
+
+
+def test_finalized_payroll_cannot_be_overwritten_by_another_finalized_result():
+    from models.payroll import PayrollResult, TimeClassification
+
+    with TemporaryDirectory() as folder:
+        repo = PayrollRepository(Path(folder) / "payroll.sqlite3")
+
+        original = PayrollResult(
+            employee_id="E1",
+            year_month="2026-08",
+            classification=TimeClassification(),
+            payments={"基本給": Decimal("200000")},
+            deductions={"所得税": Decimal("3270")},
+            finalized=True,
+        )
+        repo.save_payroll_result(original)
+
+        changed = PayrollResult(
+            employee_id="E1",
+            year_month="2026-08",
+            classification=TimeClassification(),
+            payments={"基本給": Decimal("999999")},
+            deductions={"所得税": Decimal("99999")},
+            finalized=True,
+        )
+
+        try:
+            repo.save_payroll_result(changed)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(
+                "確定済み給与を別の確定済み結果で上書きできてしまいました。"
+            )
+
+        saved = repo.payroll_result("E1", "2026-08")
+
+        assert saved is not None
+        assert saved.finalized is True
+        assert saved.payments["基本給"] == Decimal("200000")
+        assert saved.deductions["所得税"] == Decimal("3270")
