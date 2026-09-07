@@ -581,6 +581,25 @@ class PayrollRepository:
         self,
         result: PayrollResult,
     ) -> None:
+        existing = self.connection.execute(
+            """
+            SELECT payload
+            FROM payroll_results
+            WHERE employee_id = ? AND year_month = ?
+            """,
+            (
+                result.employee_id,
+                result.year_month,
+            ),
+        ).fetchone()
+
+        if existing:
+            existing_data = json.loads(existing[0])
+            if existing_data.get("finalized") and not result.finalized:
+                raise ValueError(
+                    "確定済みの給与は未確定結果で上書きできません。"
+                )
+
         self.connection.execute(
             """
             INSERT OR REPLACE INTO payroll_results
