@@ -1330,3 +1330,35 @@ def calculate_all_employee_payrolls(
             for item in batch_results
         ],
     }
+
+
+@app.get("/payroll-results/{year_month}")
+def list_payroll_results(
+    year_month: str,
+    request: Request,
+):
+    user = require_user(request)
+
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="admin only")
+
+    year_month = normalize_input(year_month)
+
+    try:
+        year, month = year_month.split("-")
+        if len(year) != 4 or len(month) != 2:
+            raise ValueError
+        date(int(year), int(month), 1)
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail="year_month must be YYYY-MM",
+        ) from error
+
+    return {
+        "year_month": year_month,
+        "results": [
+            payroll_result_to_dict(result)
+            for result in repo.payroll_results(year_month)
+        ],
+    }

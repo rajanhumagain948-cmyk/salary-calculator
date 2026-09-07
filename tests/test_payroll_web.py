@@ -756,3 +756,77 @@ def test_app_lifespan_runs_automatic_payroll_check(monkeypatch):
         pass
 
     assert calls == [main.repo]
+
+
+def test_admin_can_list_payroll_results_for_month(tmp_path, monkeypatch):
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    test_repo.save_user(
+        User(
+            username="admin",
+            password_hash="unused",
+            role="admin",
+        )
+    )
+
+    test_repo.save_payroll_result(
+        PayrollResult(
+            employee_id="E1",
+            year_month="2026-09",
+            classification=TimeClassification(),
+            payments={"基本給": Decimal("200000")},
+            deductions={"所得税": Decimal("3270")},
+            finalized=False,
+        )
+    )
+
+    test_repo.save_payroll_result(
+        PayrollResult(
+            employee_id="E2",
+            year_month="2026-09",
+            classification=TimeClassification(),
+            payments={"基本給": Decimal("250000")},
+            deductions={"所得税": Decimal("5000")},
+            finalized=True,
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "admin"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.get("/payroll-results/2026-09")
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["year_month"] == "2026-09"
+    assert len(data["results"]) == 2
+    assert data["results"][0]["employee_id"] == "E1"
+    assert data["results"][0]["finalized"] is False
+    assert data["results"][1]["employee_id"] == "E2"
+    assert data["results"][1]["finalized"] is True
+
+
+def test_employee_cannot_list_all_payroll_results(tmp_path, monkeypatch):
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    test_repo.save_user(
+        User(
+            username="employee",
+            password_hash="unused",
+            role="employee",
+            employee_id="E1",
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "employee"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.get("/payroll-results/2026-09")
+
+    assert response.status_code == 403
