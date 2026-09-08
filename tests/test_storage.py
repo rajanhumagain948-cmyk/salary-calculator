@@ -189,3 +189,5 @@ def test_legacy_company_without_hourly_leave_settings_uses_defaults():
         assert company.name == "旧会社"
         assert company.hourly_paid_leave_enabled is False
         assert company.hourly_paid_leave_unit_hours == 1
+        assert company.hourly_paid_leave_year_start_month == 4
+        assert company.hourly_paid_leave_year_start_day == 1
