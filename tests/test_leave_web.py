@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal
 
 from fastapi.testclient import TestClient
 
@@ -682,3 +683,223 @@ def test_admin_cannot_approve_leave_when_balance_is_insufficient(
 
     saved = test_repo.leave_requests("E1")
     assert saved[0].status == "申請中"
+
+
+def _hourly_leave_repo(tmp_path, monkeypatch, *, enabled: bool):
+    from decimal import Decimal
+    from models.company import Company
+    from models.employee import Employee
+    from models.employment import EmploymentTerms
+    from models.leave_grant import LeaveGrant
+
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    test_repo.save_user(
+        User(
+            username="employee",
+            password_hash="unused",
+            role="employee",
+            employee_id="E1",
+        )
+    )
+
+    test_repo.save_employee(
+        Employee(
+            employee_id="E1",
+            name="時間年休テスト",
+            employment_type="正社員",
+            hire_date=date(2025, 1, 1),
+            pay_type="月給",
+            monthly_salary=Decimal("200000"),
+            weekly_hours=Decimal("40"),
+            weekly_days=5,
+        )
+    )
+
+    test_repo.save_terms(
+        EmploymentTerms(
+            "E1",
+            standard_daily_minutes=480,
+        )
+    )
+
+    test_repo.save_company(
+        Company(
+            name="テスト株式会社",
+            hourly_paid_leave_enabled=enabled,
+            hourly_paid_leave_unit_hours=1,
+            hourly_paid_leave_year_start_month=4,
+            hourly_paid_leave_year_start_day=1,
+        )
+    )
+
+    test_repo.save_leave_grant(
+        LeaveGrant(
+            employee_id="E1",
+            grant_date=date(2026, 7, 1),
+            granted_days=Decimal("10"),
+            expires_on=date(2028, 6, 30),
+        )
+    )
+
+    return test_repo
+
+
+def test_hourly_leave_is_rejected_when_company_setting_is_off(
+    tmp_path,
+    monkeypatch,
+):
+    test_repo = _hourly_leave_repo(
+        tmp_path,
+        monkeypatch,
+        enabled=False,
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "employee"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.post(
+        "/my/leave-requests",
+        data={
+            "leave_date": "2026-09-15",
+            "leave_unit": "時間",
+            "start_time": "09:00",
+            "end_time": "11:00",
+        },
+    )
+
+    assert response.status_code == 409
+    assert test_repo.leave_requests("E1") == []
+
+
+def test_employee_can_request_hourly_paid_leave(
+    tmp_path,
+    monkeypatch,
+):
+    test_repo = _hourly_leave_repo(
+        tmp_path,
+        monkeypatch,
+        enabled=True,
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "employee"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.post(
+        "/my/leave-requests",
+        data={
+            "leave_date": "2026-09-15",
+            "leave_unit": "時間",
+            "start_time": "09:00",
+            "end_time": "11:00",
+            "reason": "通院",
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["leave_unit"] == "時間"
+    assert data["start_minute"] == 540
+    assert data["end_minute"] == 660
+
+    saved = test_repo.leave_requests("E1")
+    assert len(saved) == 1
+    assert saved[0].start_minute == 540
+    assert saved[0].end_minute == 660
+
+    from services.leave_service import calculate_leave_balance
+
+    balance = calculate_leave_balance(
+        test_repo,
+        "E1",
+        date(2026, 9, 30),
+    )
+
+    assert balance.pending_days == Decimal("0.25")
+    assert balance.remaining_days == Decimal("10")
+    assert balance.available_days == Decimal("9.75")
+
+
+def test_employee_cannot_request_overlapping_hourly_leave(
+    tmp_path,
+    monkeypatch,
+):
+    test_repo = _hourly_leave_repo(
+        tmp_path,
+        monkeypatch,
+        enabled=True,
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "employee"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    first = client.post(
+        "/my/leave-requests",
+        data={
+            "leave_date": "2026-09-15",
+            "leave_unit": "時間",
+            "start_time": "09:00",
+            "end_time": "11:00",
+        },
+    )
+    assert first.status_code == 200
+
+    second = client.post(
+        "/my/leave-requests",
+        data={
+            "leave_date": "2026-09-15",
+            "leave_unit": "時間",
+            "start_time": "10:00",
+            "end_time": "12:00",
+        },
+    )
+
+    assert second.status_code == 409
+    assert len(test_repo.leave_requests("E1")) == 1
+
+
+def test_hourly_paid_leave_cannot_exceed_five_days_per_year(
+    tmp_path,
+    monkeypatch,
+):
+    test_repo = _hourly_leave_repo(
+        tmp_path,
+        monkeypatch,
+        enabled=True,
+    )
+
+    # 年度内に既に5日相当（8時間×5日）を承認済みとする。
+    for day in (1, 2, 3, 4, 5):
+        test_repo.save_leave_request(
+            LeaveRequest(
+                employee_id="E1",
+                leave_date=date(2026, 8, day),
+                status="承認",
+                leave_unit="時間",
+                start_minute=9 * 60,
+                end_minute=17 * 60,
+            )
+        )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "employee"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.post(
+        "/my/leave-requests",
+        data={
+            "leave_date": "2026-09-15",
+            "leave_unit": "時間",
+            "start_time": "09:00",
+            "end_time": "10:00",
+        },
+    )
+
+    assert response.status_code == 409
+    assert "5日相当" in response.json()["detail"]
+    assert len(test_repo.leave_requests("E1")) == 5

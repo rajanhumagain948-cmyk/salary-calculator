@@ -32,6 +32,9 @@ from services.leave_service import (
     calculate_leave_balance,
     due_leave_grant,
     has_overlapping_leave_request,
+    hourly_leave_days,
+    validate_hourly_annual_limit,
+    validate_hourly_leave_request,
     leave_grant_expiry_date,
     leave_request_days,
     next_leave_grant,
@@ -179,6 +182,8 @@ def company_info(request: Request):
         "representative": company.representative,
         "hourly_paid_leave_enabled": company.hourly_paid_leave_enabled,
         "hourly_paid_leave_unit_hours": company.hourly_paid_leave_unit_hours,
+        "hourly_paid_leave_year_start_month": company.hourly_paid_leave_year_start_month,
+        "hourly_paid_leave_year_start_day": company.hourly_paid_leave_year_start_day,
     }
 
 
@@ -1455,6 +1460,8 @@ def submit_my_leave_request(
     reason: str = Form(""),
     leave_unit: str = Form("全日"),
     half_day_period: str = Form(""),
+    start_time: str = Form(""),
+    end_time: str = Form(""),
 ):
     user = require_user(request)
 
@@ -1465,24 +1472,26 @@ def submit_my_leave_request(
         raise HTTPException(status_code=400, detail="employee_id not set")
 
     employee_id = normalize_input(user.employee_id)
-    leave_date = normalize_input(leave_date)
-    reason = normalize_input(reason)
     leave_unit = normalize_input(leave_unit)
     half_day_period = normalize_input(half_day_period)
+    reason = normalize_input(reason)
 
     try:
-        parsed_date = date.fromisoformat(leave_date)
+        parsed_date = date.fromisoformat(normalize_input(leave_date))
     except ValueError as error:
         raise HTTPException(
             status_code=400,
             detail="leave_date must be YYYY-MM-DD",
         ) from error
 
-    if leave_unit not in ("全日", "半日"):
-        raise HTTPException(
-            status_code=400,
-            detail="現在申請できる取得単位は全日または半日です。",
-        )
+    if leave_unit not in ("全日", "半日", "時間"):
+        raise HTTPException(status_code=400, detail="不正な取得単位です。")
+
+    company = repo.company()
+    terms = repo.terms(employee_id)
+
+    start_minute = None
+    end_minute = None
 
     if leave_unit == "半日":
         if half_day_period not in ("午前", "午後"):
@@ -1490,24 +1499,77 @@ def submit_my_leave_request(
                 status_code=400,
                 detail="半日有給は午前または午後を指定してください。",
             )
+
+    elif leave_unit == "時間":
+        if not company.hourly_paid_leave_enabled:
+            raise HTTPException(
+                status_code=409,
+                detail="会社で時間単位年休が有効になっていません。",
+            )
+
+        def parse_time(value: str) -> int:
+            try:
+                hour, minute = normalize_input(value).split(":")
+                h = int(hour)
+                m = int(minute)
+                if not (0 <= h <= 23 and 0 <= m <= 59):
+                    raise ValueError
+                return h * 60 + m
+            except (ValueError, TypeError) as error:
+                raise HTTPException(
+                    status_code=400,
+                    detail="時刻はHH:MM形式で指定してください。",
+                ) from error
+
+        start_minute = parse_time(start_time)
+        end_minute = parse_time(end_time)
+
+        try:
+            requested_hours = validate_hourly_leave_request(
+                start_minute=start_minute,
+                end_minute=end_minute,
+                unit_hours=company.hourly_paid_leave_unit_hours,
+                standard_daily_minutes=terms.standard_daily_minutes,
+            )
+
+            validate_hourly_annual_limit(
+                repo.leave_requests(employee_id),
+                requested_hours=requested_hours,
+                standard_daily_minutes=terms.standard_daily_minutes,
+                as_of=parsed_date,
+                year_start_month=company.hourly_paid_leave_year_start_month,
+                year_start_day=company.hourly_paid_leave_year_start_day,
+            )
+        except ValueError as error:
+            raise HTTPException(
+                status_code=409,
+                detail=str(error),
+            ) from error
+
     else:
         half_day_period = ""
-
-    requested_days = (
-        Decimal("0.5")
-        if leave_unit == "半日"
-        else Decimal("1")
-    )
 
     if has_overlapping_leave_request(
         repo.leave_requests(employee_id),
         parsed_date,
         leave_unit,
         half_day_period if leave_unit == "半日" else None,
+        start_minute,
+        end_minute,
     ):
         raise HTTPException(
             status_code=409,
             detail="同じ取得日の有給休暇申請と重複しています。",
+        )
+
+    if leave_unit == "全日":
+        requested_days = Decimal("1")
+    elif leave_unit == "半日":
+        requested_days = Decimal("0.5")
+    else:
+        requested_days = hourly_leave_days(
+            requested_hours,
+            terms.standard_daily_minutes,
         )
 
     balance = calculate_leave_balance(
@@ -1516,12 +1578,7 @@ def submit_my_leave_request(
         parsed_date,
     )
 
-    available_days = (
-        balance.remaining_days
-        - balance.pending_days
-    )
-
-    if requested_days > available_days:
+    if requested_days > balance.available_days:
         raise HTTPException(
             status_code=409,
             detail="有給休暇の申請可能日数が不足しています。",
@@ -1535,10 +1592,10 @@ def submit_my_leave_request(
             status="申請中",
             leave_unit=leave_unit,
             half_day_period=(
-                half_day_period
-                if leave_unit == "半日"
-                else None
+                half_day_period if leave_unit == "半日" else None
             ),
+            start_minute=start_minute,
+            end_minute=end_minute,
         )
     )
 

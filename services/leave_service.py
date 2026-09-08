@@ -17,7 +17,10 @@ class LeaveBalance:
     available_days: Decimal = Decimal("0")
 
 
-def leave_request_days(request) -> Decimal:
+def leave_request_days(
+    request,
+    standard_daily_minutes: int = 480,
+) -> Decimal:
     """有給申請1件が消化する日数を返す。"""
     if request.leave_unit == "全日":
         return Decimal("1")
@@ -25,9 +28,23 @@ def leave_request_days(request) -> Decimal:
     if request.leave_unit == "半日":
         return Decimal("0.5")
 
-    raise ValueError(
-        "時間単位有給の日数換算設定が未登録です。"
-    )
+    if request.leave_unit == "時間":
+        if request.start_minute is None or request.end_minute is None:
+            raise ValueError("時間単位有給の開始・終了時刻が未設定です。")
+
+        duration_minutes = request.end_minute - request.start_minute
+
+        if duration_minutes <= 0 or duration_minutes % 60:
+            raise ValueError("時間単位有給の時間帯が不正です。")
+
+        hours = duration_minutes // 60
+
+        return hourly_leave_days(
+            hours,
+            standard_daily_minutes,
+        )
+
+    raise ValueError("不正な有給取得単位です。")
 
 
 def calculate_leave_balance(
@@ -47,10 +64,15 @@ def calculate_leave_balance(
     )
 
     requests = repo.leave_requests(employee_id)
+    terms = repo.terms(employee_id)
+    standard_daily_minutes = terms.standard_daily_minutes
 
     used_days = sum(
         (
-            leave_request_days(request)
+            leave_request_days(
+                request,
+                standard_daily_minutes,
+            )
             for request in requests
             if request.status == "承認"
             and request.leave_date <= as_of
@@ -60,7 +82,10 @@ def calculate_leave_balance(
 
     pending_days = sum(
         (
-            leave_request_days(request)
+            leave_request_days(
+                request,
+                standard_daily_minutes,
+            )
             for request in requests
             if request.status == "申請中"
             and request.leave_date <= as_of
@@ -255,6 +280,8 @@ def has_overlapping_leave_request(
     leave_date: date,
     leave_unit: str,
     half_day_period: str | None = None,
+    start_minute: int | None = None,
+    end_minute: int | None = None,
 ) -> bool:
     """申請中・承認済みの有給と取得範囲が重複するか判定する。"""
     for existing in requests:
@@ -264,14 +291,32 @@ def has_overlapping_leave_request(
         if existing.leave_date != leave_date:
             continue
 
+        # 全日は同日の他の有給と併用不可
         if existing.leave_unit == "全日" or leave_unit == "全日":
             return True
 
-        if (
-            existing.leave_unit == "半日"
-            and leave_unit == "半日"
-            and existing.half_day_period == half_day_period
-        ):
+        # 半日は同じ午前/午後なら重複
+        if existing.leave_unit == "半日" and leave_unit == "半日":
+            if existing.half_day_period == half_day_period:
+                return True
+            continue
+
+        # 時間同士は時間帯が実際に重なる場合だけ重複
+        if existing.leave_unit == "時間" and leave_unit == "時間":
+            if (
+                existing.start_minute is not None
+                and existing.end_minute is not None
+                and start_minute is not None
+                and end_minute is not None
+                and start_minute < existing.end_minute
+                and existing.start_minute < end_minute
+            ):
+                return True
+            continue
+
+        # 半日と時間の併用には午前/午後の勤務時間定義が必要。
+        # 現時点では安全側で同日併用を禁止する。
+        if {existing.leave_unit, leave_unit} == {"半日", "時間"}:
             return True
 
     return False
