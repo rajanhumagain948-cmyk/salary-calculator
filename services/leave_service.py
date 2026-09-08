@@ -203,3 +203,23 @@ def due_leave_grant(
             )
 
         grant_index += 1
+
+
+def leave_grant_expiry_date(
+    grant_date: date,
+) -> date:
+    """付与された年次有給休暇を日単位で管理するための最終有効日を返す。"""
+    from datetime import timedelta
+
+    try:
+        two_years_later = grant_date.replace(
+            year=grant_date.year + 2,
+        )
+    except ValueError:
+        # 2月29日 → 2年後が平年の場合は2月28日
+        two_years_later = grant_date.replace(
+            year=grant_date.year + 2,
+            day=28,
+        )
+
+    return two_years_later - timedelta(days=1)

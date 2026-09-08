@@ -228,3 +228,16 @@ def test_due_leave_grant_candidate_is_not_returned_twice(tmp_path):
         employee,
         date(2026, 9, 7),
     ) is None
+
+
+def test_leave_grant_expiry_date():
+    from services.leave_service import leave_grant_expiry_date
+
+    assert leave_grant_expiry_date(
+        date(2026, 9, 1)
+    ) == date(2028, 8, 31)
+
+    # うるう日の付与も扱える
+    assert leave_grant_expiry_date(
+        date(2028, 2, 29)
+    ) == date(2030, 2, 27)
