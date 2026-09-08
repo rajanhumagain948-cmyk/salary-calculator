@@ -6,6 +6,13 @@ import AuthGuard from "@/components/auth/AuthGuard";
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
 
+type LeaveBalance = {
+  granted_days: string;
+  used_days: string;
+  pending_days: string;
+  remaining_days: string;
+};
+
 type LeaveRequest = {
   request_id: number;
   employee_id: string;
@@ -25,12 +32,31 @@ function today() {
 
 export default function MyLeavePage() {
   const [items, setItems] = useState<LeaveRequest[]>([]);
+  const [balance, setBalance] = useState<LeaveBalance | null>(null);
   const [leaveDate, setLeaveDate] = useState(today);
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+
+  async function loadBalance() {
+    try {
+      const res = await fetch(
+        `${API_BASE}/my/leave-balance?as_of=${today()}`,
+        {
+          credentials: "include",
+          cache: "no-store",
+        }
+      );
+
+      if (!res.ok) return;
+
+      setBalance(await res.json());
+    } catch {
+      // 申請履歴はそのまま利用可能にする
+    }
+  }
 
   async function loadRequests() {
     setLoading(true);
@@ -87,6 +113,7 @@ export default function MyLeavePage() {
       setReason("");
       setMessage("有給休暇を申請しました。");
       await loadRequests();
+      await loadBalance();
     } catch {
       setError("有給申請中に通信エラーが発生しました。");
     } finally {
@@ -96,6 +123,7 @@ export default function MyLeavePage() {
 
   useEffect(() => {
     loadRequests();
+    loadBalance();
   }, []);
 
   return (
@@ -129,6 +157,38 @@ export default function MyLeavePage() {
 
         {error && <div style={errorStyle}>{error}</div>}
         {message && <div style={successStyle}>{message}</div>}
+
+        {balance && (
+          <section
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+              gap: 12,
+              marginBottom: 18,
+            }}
+          >
+            <BalanceCard
+              label="有給残日数"
+              value={balance.remaining_days}
+              color="#65e6b5"
+            />
+            <BalanceCard
+              label="付与日数"
+              value={balance.granted_days}
+              color="#9ba5ff"
+            />
+            <BalanceCard
+              label="使用済み"
+              value={balance.used_days}
+              color="#8fa6bf"
+            />
+            <BalanceCard
+              label="申請中"
+              value={balance.pending_days}
+              color="#f6c85f"
+            />
+          </section>
+        )}
 
         <section style={{ ...panelStyle, marginBottom: 18 }}>
           <h2 style={{ marginTop: 0, fontSize: 17 }}>
@@ -244,6 +304,39 @@ export default function MyLeavePage() {
         </section>
       </main>
     </AuthGuard>
+  );
+}
+
+function BalanceCard({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: string;
+  color: string;
+}) {
+  return (
+    <div style={panelStyle}>
+      <div
+        style={{
+          color: "#8298ae",
+          fontSize: 10,
+          marginBottom: 8,
+        }}
+      >
+        {label}
+      </div>
+
+      <strong
+        style={{
+          color,
+          fontSize: 25,
+        }}
+      >
+        {Number(value).toLocaleString("ja-JP")}日
+      </strong>
+    </div>
   );
 }
 
