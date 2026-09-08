@@ -16,6 +16,19 @@ class LeaveBalance:
     remaining_days: Decimal = Decimal("0")
 
 
+def leave_request_days(request) -> Decimal:
+    """有給申請1件が消化する日数を返す。"""
+    if request.leave_unit == "全日":
+        return Decimal("1")
+
+    if request.leave_unit == "半日":
+        return Decimal("0.5")
+
+    raise ValueError(
+        "時間単位有給の日数換算設定が未登録です。"
+    )
+
+
 def calculate_leave_balance(
     repo: PayrollRepository,
     employee_id: str,
@@ -36,7 +49,7 @@ def calculate_leave_balance(
 
     used_days = sum(
         (
-            Decimal("1")
+            leave_request_days(request)
             for request in requests
             if request.status == "承認"
             and request.leave_date <= as_of
@@ -46,7 +59,7 @@ def calculate_leave_balance(
 
     pending_days = sum(
         (
-            Decimal("1")
+            leave_request_days(request)
             for request in requests
             if request.status == "申請中"
             and request.leave_date <= as_of

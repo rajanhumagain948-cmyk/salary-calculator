@@ -241,3 +241,60 @@ def test_leave_grant_expiry_date():
     assert leave_grant_expiry_date(
         date(2028, 2, 29)
     ) == date(2030, 2, 27)
+
+
+def test_half_day_leave_request_is_saved_and_loaded(tmp_path):
+    from models.leave_request import LeaveRequest
+
+    repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+
+    repo.save_leave_request(
+        LeaveRequest(
+            employee_id="E1",
+            leave_date=date(2026, 9, 15),
+            reason="午前休",
+            leave_unit="半日",
+            half_day_period="午前",
+        )
+    )
+
+    saved = repo.leave_requests("E1")
+
+    assert len(saved) == 1
+    assert saved[0].leave_unit == "半日"
+    assert saved[0].half_day_period == "午前"
+
+
+def test_half_day_leave_uses_half_a_day_from_balance(tmp_path):
+    from models.leave_request import LeaveRequest
+    from services.leave_service import calculate_leave_balance
+
+    repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+
+    repo.save_leave_grant(
+        LeaveGrant(
+            employee_id="E1",
+            grant_date=date(2026, 7, 1),
+            granted_days=Decimal("10"),
+            expires_on=date(2028, 6, 30),
+        )
+    )
+
+    repo.save_leave_request(
+        LeaveRequest(
+            employee_id="E1",
+            leave_date=date(2026, 9, 15),
+            status="承認",
+            leave_unit="半日",
+            half_day_period="午前",
+        )
+    )
+
+    balance = calculate_leave_balance(
+        repo,
+        "E1",
+        date(2026, 9, 30),
+    )
+
+    assert balance.used_days == Decimal("0.5")
+    assert balance.remaining_days == Decimal("9.5")

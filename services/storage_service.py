@@ -141,10 +141,35 @@ class PayrollRepository:
                 leave_date TEXT NOT NULL,
                 reason TEXT NOT NULL DEFAULT '',
                 status TEXT NOT NULL DEFAULT '申請中',
-                created_at TEXT NOT NULL
+                created_at TEXT NOT NULL,
+                leave_unit TEXT NOT NULL DEFAULT '全日',
+                half_day_period TEXT
             )
             """
         )
+
+        leave_request_columns = {
+            row[1]
+            for row in self.connection.execute(
+                "PRAGMA table_info(leave_requests)"
+            ).fetchall()
+        }
+
+        if "leave_unit" not in leave_request_columns:
+            self.connection.execute(
+                """
+                ALTER TABLE leave_requests
+                ADD COLUMN leave_unit TEXT NOT NULL DEFAULT '全日'
+                """
+            )
+
+        if "half_day_period" not in leave_request_columns:
+            self.connection.execute(
+                """
+                ALTER TABLE leave_requests
+                ADD COLUMN half_day_period TEXT
+                """
+            )
 
         self.connection.commit()
 
@@ -246,8 +271,16 @@ class PayrollRepository:
         cursor = self.connection.execute(
             """
             INSERT INTO leave_requests
-            (employee_id, leave_date, reason, status, created_at)
-            VALUES (?, ?, ?, ?, ?)
+            (
+                employee_id,
+                leave_date,
+                reason,
+                status,
+                created_at,
+                leave_unit,
+                half_day_period
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 request.employee_id,
@@ -255,6 +288,8 @@ class PayrollRepository:
                 request.reason,
                 request.status,
                 created_at.isoformat(timespec="seconds"),
+                request.leave_unit,
+                request.half_day_period,
             ),
         )
 
@@ -272,7 +307,8 @@ class PayrollRepository:
         if employee_id:
             rows = self.connection.execute(
                 """
-                SELECT id, employee_id, leave_date, reason, status, created_at
+                SELECT id, employee_id, leave_date, reason, status, created_at,
+                       leave_unit, half_day_period
                 FROM leave_requests
                 WHERE employee_id = ?
                 ORDER BY leave_date DESC, id DESC
@@ -282,7 +318,8 @@ class PayrollRepository:
         else:
             rows = self.connection.execute(
                 """
-                SELECT id, employee_id, leave_date, reason, status, created_at
+                SELECT id, employee_id, leave_date, reason, status, created_at,
+                       leave_unit, half_day_period
                 FROM leave_requests
                 ORDER BY leave_date DESC, id DESC
                 """
@@ -296,6 +333,8 @@ class PayrollRepository:
                 reason=row[3],
                 status=row[4],
                 created_at=datetime.fromisoformat(row[5]),
+                leave_unit=row[6],
+                half_day_period=row[7],
             )
             for row in rows
         ]
