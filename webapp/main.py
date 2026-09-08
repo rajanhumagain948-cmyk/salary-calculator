@@ -177,6 +177,8 @@ def company_info(request: Request):
         "name": company.name,
         "address": company.address,
         "representative": company.representative,
+        "hourly_paid_leave_enabled": company.hourly_paid_leave_enabled,
+        "hourly_paid_leave_unit_hours": company.hourly_paid_leave_unit_hours,
     }
 
 
@@ -186,6 +188,8 @@ def update_company(
     name: str = Form(...),
     address: str = Form(""),
     representative: str = Form(""),
+    hourly_paid_leave_enabled: str | None = Form(None),
+    hourly_paid_leave_unit_hours: str | None = Form(None),
 ):
     user = require_user(request)
     if user.role != "admin":
@@ -195,10 +199,40 @@ def update_company(
     if not name:
         raise HTTPException(status_code=400, detail="company name is required")
 
+    current_company = repo.company()
+
+    if hourly_paid_leave_enabled is None:
+        hourly_enabled = current_company.hourly_paid_leave_enabled
+    else:
+        hourly_enabled = normalize_input(
+            hourly_paid_leave_enabled
+        ).lower() in ("1", "true", "on", "yes")
+
+    if hourly_paid_leave_unit_hours is None:
+        hourly_unit = current_company.hourly_paid_leave_unit_hours
+    else:
+        try:
+            hourly_unit = int(
+                normalize_input(hourly_paid_leave_unit_hours)
+            )
+        except ValueError as error:
+            raise HTTPException(
+                status_code=400,
+                detail="hourly_paid_leave_unit_hours must be an integer",
+            ) from error
+
+        if hourly_unit <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="hourly_paid_leave_unit_hours must be greater than 0",
+            )
+
     company = Company(
         name=name,
         address=address.strip(),
         representative=representative.strip(),
+        hourly_paid_leave_enabled=hourly_enabled,
+        hourly_paid_leave_unit_hours=hourly_unit,
     )
     repo.save_company(company)
 
@@ -208,6 +242,8 @@ def update_company(
             "name": company.name,
             "address": company.address,
             "representative": company.representative,
+            "hourly_paid_leave_enabled": company.hourly_paid_leave_enabled,
+            "hourly_paid_leave_unit_hours": company.hourly_paid_leave_unit_hours,
         },
     }
 

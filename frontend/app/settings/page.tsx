@@ -9,6 +9,8 @@ type Company = {
   name: string;
   address: string;
   representative: string;
+  hourly_paid_leave_enabled: boolean;
+  hourly_paid_leave_unit_hours: number;
 };
 
 export default function SettingsPage() {
@@ -16,6 +18,8 @@ export default function SettingsPage() {
     name: "",
     address: "",
     representative: "",
+    hourly_paid_leave_enabled: false,
+    hourly_paid_leave_unit_hours: 1,
   });
 
   const [loading, setLoading] = useState(true);
@@ -61,6 +65,14 @@ export default function SettingsPage() {
       form.append("name", company.name);
       form.append("address", company.address);
       form.append("representative", company.representative);
+      form.append(
+        "hourly_paid_leave_enabled",
+        company.hourly_paid_leave_enabled ? "1" : "0"
+      );
+      form.append(
+        "hourly_paid_leave_unit_hours",
+        String(company.hourly_paid_leave_unit_hours)
+      );
 
       const res = await fetch(`${API_BASE}/company`, {
         method: "PUT",
@@ -181,6 +193,81 @@ export default function SettingsPage() {
                   }}
                 />
               </label>
+
+              <div
+                style={{
+                  padding: 16,
+                  border: "1px solid rgba(148,180,216,.14)",
+                  borderRadius: 12,
+                  background: "rgba(8,19,33,.45)",
+                }}
+              >
+                <label
+                  style={{
+                    display: "flex",
+                    gap: 10,
+                    alignItems: "flex-start",
+                    cursor: "pointer",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={company.hourly_paid_leave_enabled}
+                    onChange={(e) =>
+                      setCompany({
+                        ...company,
+                        hourly_paid_leave_enabled: e.target.checked,
+                      })
+                    }
+                  />
+
+                  <span>
+                    <strong>
+                      時間単位年休を導入する
+                    </strong>
+                    <span
+                      style={{
+                        display: "block",
+                        marginTop: 4,
+                        color: "#8fa6bf",
+                        fontSize: 12,
+                      }}
+                    >
+                      労使協定を締結済みの場合のみ有効にしてください。
+                    </span>
+                  </span>
+                </label>
+
+                {company.hourly_paid_leave_enabled && (
+                  <label
+                    style={{
+                      display: "block",
+                      marginTop: 15,
+                    }}
+                  >
+                    最小取得単位（時間）
+                    <input
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={company.hourly_paid_leave_unit_hours}
+                      onChange={(e) =>
+                        setCompany({
+                          ...company,
+                          hourly_paid_leave_unit_hours:
+                            Number(e.target.value) || 1,
+                        })
+                      }
+                      style={{
+                        display: "block",
+                        width: 160,
+                        padding: 10,
+                        marginTop: 6,
+                      }}
+                    />
+                  </label>
+                )}
+              </div>
 
               <label>
                 住所
