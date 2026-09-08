@@ -390,3 +390,104 @@ def validate_hourly_leave_request(
         )
 
     return duration_hours
+
+
+def hourly_leave_period(
+    as_of: date,
+    *,
+    start_month: int,
+    start_day: int,
+) -> tuple[date, date]:
+    """時間単位年休の年度開始日・終了日を返す。"""
+    from datetime import timedelta
+
+    if not 1 <= start_month <= 12:
+        raise ValueError("年度開始月が不正です。")
+
+    try:
+        this_start = date(as_of.year, start_month, start_day)
+    except ValueError as error:
+        raise ValueError("年度開始日が不正です。") from error
+
+    if as_of < this_start:
+        start = date(as_of.year - 1, start_month, start_day)
+    else:
+        start = this_start
+
+    try:
+        next_start = date(start.year + 1, start_month, start_day)
+    except ValueError as error:
+        raise ValueError("年度開始日が不正です。") from error
+
+    return start, next_start - timedelta(days=1)
+
+
+def hourly_leave_used_hours(
+    requests,
+    *,
+    period_start: date,
+    period_end: date,
+    include_pending: bool = True,
+) -> int:
+    total = 0
+
+    statuses = {"承認"}
+    if include_pending:
+        statuses.add("申請中")
+
+    for request in requests:
+        if request.leave_unit != "時間":
+            continue
+        if request.status not in statuses:
+            continue
+        if not period_start <= request.leave_date <= period_end:
+            continue
+        if request.start_minute is None or request.end_minute is None:
+            continue
+
+        total += (request.end_minute - request.start_minute) // 60
+
+    return total
+
+
+def validate_hourly_annual_limit(
+    requests,
+    *,
+    requested_hours: int,
+    standard_daily_minutes: int,
+    as_of: date,
+    year_start_month: int,
+    year_start_day: int,
+) -> None:
+    period_start, period_end = hourly_leave_period(
+        as_of,
+        start_month=year_start_month,
+        start_day=year_start_day,
+    )
+
+    used = hourly_leave_used_hours(
+        requests,
+        period_start=period_start,
+        period_end=period_end,
+        include_pending=True,
+    )
+
+    limit = hourly_leave_annual_limit_hours(
+        standard_daily_minutes
+    )
+
+    if used + requested_hours > limit:
+        raise ValueError(
+            "時間単位年休は1年間に5日相当を超えて取得できません。"
+        )
+
+
+def hourly_leave_days(
+    hours: int,
+    standard_daily_minutes: int,
+) -> Decimal:
+    hours_per_day = hourly_leave_hours_per_day(
+        standard_daily_minutes
+    )
+
+    return Decimal(hours) / Decimal(hours_per_day)

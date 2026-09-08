@@ -1420,6 +1420,8 @@ def leave_request_to_dict(item: LeaveRequest) -> dict:
         "status": item.status,
         "leave_unit": item.leave_unit,
         "half_day_period": item.half_day_period,
+        "start_minute": item.start_minute,
+        "end_minute": item.end_minute,
         "created_at": (
             item.created_at.isoformat()
             if item.created_at is not None
