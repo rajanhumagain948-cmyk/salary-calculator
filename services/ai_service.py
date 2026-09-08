@@ -1,0 +1,51 @@
+from __future__ import annotations
+
+import json
+from collections.abc import Callable
+from typing import Any
+from urllib.request import Request, urlopen
+
+
+PostJson = Callable[[str, dict[str, Any]], dict[str, Any]]
+
+
+def _post_json(url: str, payload: dict[str, Any]) -> dict[str, Any]:
+    request = Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+
+    with urlopen(request, timeout=60) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+class OllamaAssistant:
+    def __init__(
+        self,
+        *,
+        model: str = "qwen3:8b",
+        base_url: str = "http://localhost:11434",
+        post_json: PostJson = _post_json,
+    ) -> None:
+        self.model = model
+        self.base_url = base_url.rstrip("/")
+        self.post_json = post_json
+
+    def chat(self, message: str) -> str:
+        response = self.post_json(
+            f"{self.base_url}/api/chat",
+            {
+                "model": self.model,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": message,
+                    }
+                ],
+                "stream": False,
+            },
+        )
+
+        return str(response["message"]["content"])
