@@ -31,6 +31,7 @@ from services.payroll_auto_service import run_payroll_auto_check
 from services.leave_service import (
     calculate_leave_balance,
     due_leave_grant,
+    has_overlapping_leave_request,
     leave_grant_expiry_date,
 )
 from services.payslip_service import export_pdf
@@ -1455,6 +1456,17 @@ def submit_my_leave_request(
         if leave_unit == "半日"
         else Decimal("1")
     )
+
+    if has_overlapping_leave_request(
+        repo.leave_requests(employee_id),
+        parsed_date,
+        leave_unit,
+        half_day_period if leave_unit == "半日" else None,
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail="同じ取得日の有給休暇申請と重複しています。",
+        )
 
     balance = calculate_leave_balance(
         repo,

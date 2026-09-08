@@ -236,3 +236,30 @@ def leave_grant_expiry_date(
         )
 
     return two_years_later - timedelta(days=1)
+
+
+def has_overlapping_leave_request(
+    requests,
+    leave_date: date,
+    leave_unit: str,
+    half_day_period: str | None = None,
+) -> bool:
+    """申請中・承認済みの有給と取得範囲が重複するか判定する。"""
+    for existing in requests:
+        if existing.status == "却下":
+            continue
+
+        if existing.leave_date != leave_date:
+            continue
+
+        if existing.leave_unit == "全日" or leave_unit == "全日":
+            return True
+
+        if (
+            existing.leave_unit == "半日"
+            and leave_unit == "半日"
+            and existing.half_day_period == half_day_period
+        ):
+            return True
+
+    return False

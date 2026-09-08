@@ -449,3 +449,167 @@ def test_employee_cannot_request_more_leave_than_available(
 
     # 既存の1件から増えていない。
     assert len(test_repo.leave_requests("E1")) == 1
+
+
+def test_employee_cannot_submit_duplicate_full_day_leave(
+    tmp_path,
+    monkeypatch,
+):
+    from decimal import Decimal
+    from models.leave_grant import LeaveGrant
+
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    test_repo.save_user(
+        User(
+            username="employee",
+            password_hash="unused",
+            role="employee",
+            employee_id="E1",
+        )
+    )
+
+    test_repo.save_leave_grant(
+        LeaveGrant(
+            employee_id="E1",
+            grant_date=date(2026, 7, 1),
+            granted_days=Decimal("10"),
+            expires_on=date(2028, 6, 30),
+        )
+    )
+
+    test_repo.save_leave_request(
+        LeaveRequest(
+            employee_id="E1",
+            leave_date=date(2026, 9, 15),
+            status="申請中",
+            leave_unit="全日",
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "employee"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.post(
+        "/my/leave-requests",
+        data={
+            "leave_date": "2026-09-15",
+            "leave_unit": "全日",
+            "reason": "重複",
+        },
+    )
+
+    assert response.status_code == 409
+    assert len(test_repo.leave_requests("E1")) == 1
+
+
+def test_employee_can_request_am_and_pm_half_day_on_same_date(
+    tmp_path,
+    monkeypatch,
+):
+    from decimal import Decimal
+    from models.leave_grant import LeaveGrant
+
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    test_repo.save_user(
+        User(
+            username="employee",
+            password_hash="unused",
+            role="employee",
+            employee_id="E1",
+        )
+    )
+
+    test_repo.save_leave_grant(
+        LeaveGrant(
+            employee_id="E1",
+            grant_date=date(2026, 7, 1),
+            granted_days=Decimal("10"),
+            expires_on=date(2028, 6, 30),
+        )
+    )
+
+    test_repo.save_leave_request(
+        LeaveRequest(
+            employee_id="E1",
+            leave_date=date(2026, 9, 15),
+            status="申請中",
+            leave_unit="半日",
+            half_day_period="午前",
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "employee"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.post(
+        "/my/leave-requests",
+        data={
+            "leave_date": "2026-09-15",
+            "leave_unit": "半日",
+            "half_day_period": "午後",
+        },
+    )
+
+    assert response.status_code == 200
+    assert len(test_repo.leave_requests("E1")) == 2
+
+
+def test_employee_cannot_request_same_half_day_twice(
+    tmp_path,
+    monkeypatch,
+):
+    from decimal import Decimal
+    from models.leave_grant import LeaveGrant
+
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    test_repo.save_user(
+        User(
+            username="employee",
+            password_hash="unused",
+            role="employee",
+            employee_id="E1",
+        )
+    )
+
+    test_repo.save_leave_grant(
+        LeaveGrant(
+            employee_id="E1",
+            grant_date=date(2026, 7, 1),
+            granted_days=Decimal("10"),
+            expires_on=date(2028, 6, 30),
+        )
+    )
+
+    test_repo.save_leave_request(
+        LeaveRequest(
+            employee_id="E1",
+            leave_date=date(2026, 9, 15),
+            status="申請中",
+            leave_unit="半日",
+            half_day_period="午前",
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "employee"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.post(
+        "/my/leave-requests",
+        data={
+            "leave_date": "2026-09-15",
+            "leave_unit": "半日",
+            "half_day_period": "午前",
+        },
+    )
+
+    assert response.status_code == 409
+    assert len(test_repo.leave_requests("E1")) == 1
