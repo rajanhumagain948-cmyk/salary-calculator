@@ -394,3 +394,24 @@ def test_leave_balance_reports_available_days_after_pending_requests(
     assert balance.remaining_days == Decimal("9")
     assert balance.pending_days == Decimal("3")
     assert balance.available_days == Decimal("6")
+
+
+def test_hourly_leave_hours_per_day_rounds_up_partial_hour():
+    from services.leave_service import hourly_leave_hours_per_day
+
+    assert hourly_leave_hours_per_day(480) == 8
+    assert hourly_leave_hours_per_day(450) == 8
+    assert hourly_leave_hours_per_day(420) == 7
+
+
+def test_hourly_paid_leave_annual_limit_is_five_days():
+    from services.leave_service import hourly_leave_annual_limit_hours
+
+    # 1日8時間相当 → 年40時間
+    assert hourly_leave_annual_limit_hours(480) == 40
+
+    # 7時間30分は1日8時間相当 → 年40時間
+    assert hourly_leave_annual_limit_hours(450) == 40
+
+    # 1日7時間相当 → 年35時間
+    assert hourly_leave_annual_limit_hours(420) == 35

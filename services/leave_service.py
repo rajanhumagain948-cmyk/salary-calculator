@@ -303,3 +303,29 @@ def next_leave_grant(
             )
 
         grant_index += 1
+
+
+def hourly_leave_hours_per_day(
+    standard_daily_minutes: int,
+) -> int:
+    """時間単位年休における1日相当の時間数を返す。"""
+    if standard_daily_minutes <= 0:
+        raise ValueError(
+            "1日の所定労働時間を0分より大きく設定してください。"
+        )
+
+    hours, remainder = divmod(
+        standard_daily_minutes,
+        60,
+    )
+
+    return hours + (1 if remainder else 0)
+
+
+def hourly_leave_annual_limit_hours(
+    standard_daily_minutes: int,
+) -> int:
+    """時間単位年休の年間上限5日分を時間数で返す。"""
+    return hourly_leave_hours_per_day(
+        standard_daily_minutes
+    ) * 5
