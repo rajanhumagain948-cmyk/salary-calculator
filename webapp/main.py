@@ -195,6 +195,8 @@ def update_company(
     representative: str = Form(""),
     hourly_paid_leave_enabled: str | None = Form(None),
     hourly_paid_leave_unit_hours: str | None = Form(None),
+    hourly_paid_leave_year_start_month: str | None = Form(None),
+    hourly_paid_leave_year_start_day: str | None = Form(None),
 ):
     user = require_user(request)
     if user.role != "admin":
@@ -232,12 +234,52 @@ def update_company(
                 detail="hourly_paid_leave_unit_hours must be greater than 0",
             )
 
+    if hourly_paid_leave_year_start_month is None:
+        year_start_month = (
+            current_company.hourly_paid_leave_year_start_month
+        )
+    else:
+        try:
+            year_start_month = int(
+                normalize_input(hourly_paid_leave_year_start_month)
+            )
+        except ValueError as error:
+            raise HTTPException(
+                status_code=400,
+                detail="時間単位年休の年度開始月が不正です。",
+            ) from error
+
+    if hourly_paid_leave_year_start_day is None:
+        year_start_day = (
+            current_company.hourly_paid_leave_year_start_day
+        )
+    else:
+        try:
+            year_start_day = int(
+                normalize_input(hourly_paid_leave_year_start_day)
+            )
+        except ValueError as error:
+            raise HTTPException(
+                status_code=400,
+                detail="時間単位年休の年度開始日が不正です。",
+            ) from error
+
+    try:
+        date(2026, year_start_month, year_start_day)
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail="時間単位年休の年度開始月日が不正です。",
+        ) from error
+
     company = Company(
         name=name,
         address=address.strip(),
         representative=representative.strip(),
         hourly_paid_leave_enabled=hourly_enabled,
         hourly_paid_leave_unit_hours=hourly_unit,
+        hourly_paid_leave_year_start_month=year_start_month,
+        hourly_paid_leave_year_start_day=year_start_day,
     )
     repo.save_company(company)
 
@@ -249,6 +291,8 @@ def update_company(
             "representative": company.representative,
             "hourly_paid_leave_enabled": company.hourly_paid_leave_enabled,
             "hourly_paid_leave_unit_hours": company.hourly_paid_leave_unit_hours,
+            "hourly_paid_leave_year_start_month": company.hourly_paid_leave_year_start_month,
+            "hourly_paid_leave_year_start_day": company.hourly_paid_leave_year_start_day,
         },
     }
 

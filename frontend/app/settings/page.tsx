@@ -11,6 +11,8 @@ type Company = {
   representative: string;
   hourly_paid_leave_enabled: boolean;
   hourly_paid_leave_unit_hours: number;
+  hourly_paid_leave_year_start_month: number;
+  hourly_paid_leave_year_start_day: number;
 };
 
 export default function SettingsPage() {
@@ -20,6 +22,8 @@ export default function SettingsPage() {
     representative: "",
     hourly_paid_leave_enabled: false,
     hourly_paid_leave_unit_hours: 1,
+    hourly_paid_leave_year_start_month: 4,
+    hourly_paid_leave_year_start_day: 1,
   });
 
   const [loading, setLoading] = useState(true);
@@ -72,6 +76,14 @@ export default function SettingsPage() {
       form.append(
         "hourly_paid_leave_unit_hours",
         String(company.hourly_paid_leave_unit_hours)
+      );
+      form.append(
+        "hourly_paid_leave_year_start_month",
+        String(company.hourly_paid_leave_year_start_month)
+      );
+      form.append(
+        "hourly_paid_leave_year_start_day",
+        String(company.hourly_paid_leave_year_start_day)
       );
 
       const res = await fetch(`${API_BASE}/company`, {
