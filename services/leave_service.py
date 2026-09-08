@@ -71,7 +71,10 @@ def calculate_leave_balance(
         granted_days=granted_days,
         used_days=used_days,
         pending_days=pending_days,
-        remaining_days=granted_days - used_days,
+        remaining_days=max(
+            Decimal("0"),
+            granted_days - used_days,
+        ),
     )
 
 

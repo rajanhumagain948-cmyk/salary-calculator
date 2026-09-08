@@ -298,3 +298,29 @@ def test_half_day_leave_uses_half_a_day_from_balance(tmp_path):
 
     assert balance.used_days == Decimal("0.5")
     assert balance.remaining_days == Decimal("9.5")
+
+
+def test_leave_balance_never_returns_negative_remaining_days(tmp_path):
+    from models.leave_request import LeaveRequest
+    from services.leave_service import calculate_leave_balance
+
+    repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+
+    # 旧データなどで、付与がないのに承認済み申請が存在するケース。
+    repo.save_leave_request(
+        LeaveRequest(
+            employee_id="E1",
+            leave_date=date(2026, 8, 25),
+            status="承認",
+        )
+    )
+
+    balance = calculate_leave_balance(
+        repo,
+        "E1",
+        date(2026, 9, 30),
+    )
+
+    assert balance.granted_days == Decimal("0")
+    assert balance.used_days == Decimal("1")
+    assert balance.remaining_days == Decimal("0")
