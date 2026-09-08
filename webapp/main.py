@@ -33,6 +33,7 @@ from services.leave_service import (
     due_leave_grant,
     has_overlapping_leave_request,
     leave_grant_expiry_date,
+    leave_request_days,
 )
 from services.payslip_service import export_pdf
 
@@ -1549,6 +1550,21 @@ def update_leave_request_status(
             status_code=404,
             detail="leave request not found",
         )
+
+    if status == "承認":
+        balance = calculate_leave_balance(
+            repo,
+            existing.employee_id,
+            existing.leave_date,
+        )
+
+        required_days = leave_request_days(existing)
+
+        if balance.remaining_days < required_days:
+            raise HTTPException(
+                status_code=409,
+                detail="有給休暇の残日数が不足しているため承認できません。",
+            )
 
     repo.update_leave_status(request_id, status)
 

@@ -162,6 +162,18 @@ def test_admin_can_approve_leave_request(tmp_path, monkeypatch):
         )
     )
 
+    from decimal import Decimal
+    from models.leave_grant import LeaveGrant
+
+    test_repo.save_leave_grant(
+        LeaveGrant(
+            employee_id="E1",
+            grant_date=date(2026, 7, 1),
+            granted_days=Decimal("10"),
+            expires_on=date(2028, 6, 30),
+        )
+    )
+
     item = test_repo.save_leave_request(
         LeaveRequest(
             employee_id="E1",
@@ -613,3 +625,42 @@ def test_employee_cannot_request_same_half_day_twice(
 
     assert response.status_code == 409
     assert len(test_repo.leave_requests("E1")) == 1
+
+
+def test_admin_cannot_approve_leave_when_balance_is_insufficient(
+    tmp_path,
+    monkeypatch,
+):
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    test_repo.save_user(
+        User(
+            username="admin",
+            password_hash="unused",
+            role="admin",
+        )
+    )
+
+    item = test_repo.save_leave_request(
+        LeaveRequest(
+            employee_id="E1",
+            leave_date=date(2026, 9, 15),
+            status="申請中",
+            leave_unit="全日",
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "admin"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.post(
+        f"/leave-requests/{item.request_id}/status",
+        data={"status": "承認"},
+    )
+
+    assert response.status_code == 409
+
+    saved = test_repo.leave_requests("E1")
+    assert saved[0].status == "申請中"
