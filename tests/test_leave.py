@@ -349,3 +349,48 @@ def test_next_leave_grant_for_employee_before_first_grant():
     assert candidate.grant_date == date(2026, 12, 1)
     assert candidate.days == Decimal("10")
     assert candidate.service_months == 6
+
+
+def test_leave_balance_reports_available_days_after_pending_requests(
+    tmp_path,
+):
+    from models.leave_request import LeaveRequest
+    from services.leave_service import calculate_leave_balance
+
+    repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+
+    repo.save_leave_grant(
+        LeaveGrant(
+            employee_id="E1",
+            grant_date=date(2026, 7, 1),
+            granted_days=Decimal("10"),
+            expires_on=date(2028, 6, 30),
+        )
+    )
+
+    repo.save_leave_request(
+        LeaveRequest(
+            employee_id="E1",
+            leave_date=date(2026, 9, 10),
+            status="承認",
+        )
+    )
+
+    for day in (20, 21, 22):
+        repo.save_leave_request(
+            LeaveRequest(
+                employee_id="E1",
+                leave_date=date(2026, 9, day),
+                status="申請中",
+            )
+        )
+
+    balance = calculate_leave_balance(
+        repo,
+        "E1",
+        date(2026, 9, 30),
+    )
+
+    assert balance.remaining_days == Decimal("9")
+    assert balance.pending_days == Decimal("3")
+    assert balance.available_days == Decimal("6")

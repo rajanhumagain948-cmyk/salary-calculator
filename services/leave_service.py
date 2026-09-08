@@ -14,6 +14,7 @@ class LeaveBalance:
     used_days: Decimal = Decimal("0")
     pending_days: Decimal = Decimal("0")
     remaining_days: Decimal = Decimal("0")
+    available_days: Decimal = Decimal("0")
 
 
 def leave_request_days(request) -> Decimal:
@@ -67,14 +68,22 @@ def calculate_leave_balance(
         Decimal("0"),
     )
 
+    remaining_days = max(
+        Decimal("0"),
+        granted_days - used_days,
+    )
+
+    available_days = max(
+        Decimal("0"),
+        remaining_days - pending_days,
+    )
+
     return LeaveBalance(
         granted_days=granted_days,
         used_days=used_days,
         pending_days=pending_days,
-        remaining_days=max(
-            Decimal("0"),
-            granted_days - used_days,
-        ),
+        remaining_days=remaining_days,
+        available_days=available_days,
     )
 
 

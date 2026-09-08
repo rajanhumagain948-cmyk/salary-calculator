@@ -363,6 +363,21 @@ def test_employee_can_view_own_leave_balance(tmp_path, monkeypatch):
         )
     )
 
+    from models.employee import Employee
+
+    test_repo.save_employee(
+        Employee(
+            employee_id="E1",
+            name="有給残数テスト",
+            employment_type="正社員",
+            hire_date=date(2026, 1, 1),
+            pay_type="月給",
+            monthly_salary=Decimal("200000"),
+            weekly_hours=Decimal("40"),
+            weekly_days=5,
+        )
+    )
+
     test_repo.save_leave_grant(
         LeaveGrant(
             employee_id="E1",
@@ -405,6 +420,9 @@ def test_employee_can_view_own_leave_balance(tmp_path, monkeypatch):
     assert data["used_days"] == "1"
     assert data["pending_days"] == "1"
     assert data["remaining_days"] == "9"
+    assert data["available_days"] == "8"
+    assert data["next_grant_date"] == "2027-07-01"
+    assert data["next_grant_days"] == "11"
 
 
 def test_employee_cannot_request_more_leave_than_available(

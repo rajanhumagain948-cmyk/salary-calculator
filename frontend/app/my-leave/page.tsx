@@ -11,6 +11,7 @@ type LeaveBalance = {
   used_days: string;
   pending_days: string;
   remaining_days: string;
+  available_days: string;
   next_grant_date: string;
   next_grant_days: string;
 };
@@ -179,7 +180,7 @@ export default function MyLeavePage() {
           <section
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+              gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
               gap: 12,
               marginBottom: 18,
             }}
@@ -203,6 +204,11 @@ export default function MyLeavePage() {
               label="申請中"
               value={balance.pending_days}
               color="#f6c85f"
+            />
+            <BalanceCard
+              label="申請可能"
+              value={balance.available_days}
+              color="#45e0a8"
             />
           </section>
         )}
@@ -315,7 +321,11 @@ export default function MyLeavePage() {
 
             <button
               type="submit"
-              disabled={submitting}
+              disabled={
+                submitting ||
+                !balance ||
+                Number(balance.available_days) <= 0
+              }
               style={{
                 height: 42,
                 padding: "0 20px",
@@ -328,7 +338,11 @@ export default function MyLeavePage() {
                 cursor: submitting ? "wait" : "pointer",
               }}
             >
-              {submitting ? "申請中..." : "申請する"}
+              {submitting
+                ? "申請中..."
+                : balance && Number(balance.available_days) <= 0
+                  ? "申請可能日数なし"
+                  : "申請する"}
             </button>
           </form>
         </section>

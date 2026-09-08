@@ -1715,9 +1715,31 @@ def get_my_leave_balance(
             detail="as_of must be YYYY-MM-DD",
         ) from error
 
+    employee_id = normalize_input(user.employee_id)
+
+    employee = next(
+        (
+            item
+            for item in repo.employees()
+            if item.employee_id == employee_id
+        ),
+        None,
+    )
+
+    if employee is None:
+        raise HTTPException(
+            status_code=404,
+            detail="employee not found",
+        )
+
     balance = calculate_leave_balance(
         repo,
-        normalize_input(user.employee_id),
+        employee_id,
+        target_date,
+    )
+
+    next_grant = next_leave_grant(
+        employee,
         target_date,
     )
 
@@ -1726,4 +1748,7 @@ def get_my_leave_balance(
         "used_days": str(balance.used_days),
         "pending_days": str(balance.pending_days),
         "remaining_days": str(balance.remaining_days),
+        "available_days": str(balance.available_days),
+        "next_grant_date": next_grant.grant_date.isoformat(),
+        "next_grant_days": str(next_grant.days),
     }
