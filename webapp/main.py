@@ -1410,6 +1410,8 @@ def submit_my_leave_request(
     request: Request,
     leave_date: str = Form(...),
     reason: str = Form(""),
+    leave_unit: str = Form("全日"),
+    half_day_period: str = Form(""),
 ):
     user = require_user(request)
 
@@ -1422,6 +1424,8 @@ def submit_my_leave_request(
     employee_id = normalize_input(user.employee_id)
     leave_date = normalize_input(leave_date)
     reason = normalize_input(reason)
+    leave_unit = normalize_input(leave_unit)
+    half_day_period = normalize_input(half_day_period)
 
     try:
         parsed_date = date.fromisoformat(leave_date)
@@ -1431,12 +1435,56 @@ def submit_my_leave_request(
             detail="leave_date must be YYYY-MM-DD",
         ) from error
 
+    if leave_unit not in ("全日", "半日"):
+        raise HTTPException(
+            status_code=400,
+            detail="現在申請できる取得単位は全日または半日です。",
+        )
+
+    if leave_unit == "半日":
+        if half_day_period not in ("午前", "午後"):
+            raise HTTPException(
+                status_code=400,
+                detail="半日有給は午前または午後を指定してください。",
+            )
+    else:
+        half_day_period = ""
+
+    requested_days = (
+        Decimal("0.5")
+        if leave_unit == "半日"
+        else Decimal("1")
+    )
+
+    balance = calculate_leave_balance(
+        repo,
+        employee_id,
+        parsed_date,
+    )
+
+    available_days = (
+        balance.remaining_days
+        - balance.pending_days
+    )
+
+    if requested_days > available_days:
+        raise HTTPException(
+            status_code=409,
+            detail="有給休暇の申請可能日数が不足しています。",
+        )
+
     item = repo.save_leave_request(
         LeaveRequest(
             employee_id=employee_id,
             leave_date=parsed_date,
             reason=reason,
             status="申請中",
+            leave_unit=leave_unit,
+            half_day_period=(
+                half_day_period
+                if leave_unit == "半日"
+                else None
+            ),
         )
     )
 
