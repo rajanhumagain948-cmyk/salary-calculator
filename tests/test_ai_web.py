@@ -37,3 +37,29 @@ def test_admin_can_chat_with_ai_assistant(tmp_path, monkeypatch):
     assert response.json() == {
         "answer": "給与についての回答です。",
     }
+
+
+def test_employee_cannot_chat_with_ai_assistant(tmp_path, monkeypatch):
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+    monkeypatch.setattr(main, "ai_assistant", FakeAssistant())
+
+    test_repo.save_user(
+        User(
+            username="employee",
+            password_hash="unused",
+            role="employee",
+            employee_id="E1",
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "employee"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.post(
+        "/ai/chat",
+        data={"message": "給与について教えて"},
+    )
+
+    assert response.status_code == 403
