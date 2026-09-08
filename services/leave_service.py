@@ -266,3 +266,31 @@ def has_overlapping_leave_request(
             return True
 
     return False
+
+
+def next_leave_grant(
+    employee,
+    as_of: date,
+) -> LeaveGrantCandidate:
+    """基準日時点の次回法定付与予定を返す。"""
+    grant_index = 0
+
+    while True:
+        scheduled_date = leave_grant_date(
+            employee.hire_date,
+            grant_index,
+        )
+
+        if scheduled_date >= as_of:
+            service_months = 6 + grant_index * 12
+
+            return LeaveGrantCandidate(
+                grant_date=scheduled_date,
+                days=employee_entitlement_days(
+                    employee,
+                    service_months,
+                ),
+                service_months=service_months,
+            )
+
+        grant_index += 1

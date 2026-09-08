@@ -324,3 +324,28 @@ def test_leave_balance_never_returns_negative_remaining_days(tmp_path):
     assert balance.granted_days == Decimal("0")
     assert balance.used_days == Decimal("1")
     assert balance.remaining_days == Decimal("0")
+
+
+def test_next_leave_grant_for_employee_before_first_grant():
+    from models.employee import Employee
+    from services.leave_service import next_leave_grant
+
+    employee = Employee(
+        employee_id="W250651",
+        name="テスト",
+        employment_type="正社員",
+        hire_date=date(2026, 6, 1),
+        pay_type="月給",
+        monthly_salary=Decimal("200000"),
+        weekly_hours=Decimal("40"),
+        weekly_days=5,
+    )
+
+    candidate = next_leave_grant(
+        employee,
+        date(2026, 9, 8),
+    )
+
+    assert candidate.grant_date == date(2026, 12, 1)
+    assert candidate.days == Decimal("10")
+    assert candidate.service_months == 6
