@@ -29,6 +29,8 @@ def test_admin_can_save_hourly_paid_leave_settings(tmp_path, monkeypatch):
             "representative": "",
             "hourly_paid_leave_enabled": "1",
             "hourly_paid_leave_unit_hours": "1",
+            "hourly_paid_leave_year_start_month": "7",
+            "hourly_paid_leave_year_start_day": "15",
         },
     )
 
@@ -38,9 +40,13 @@ def test_admin_can_save_hourly_paid_leave_settings(tmp_path, monkeypatch):
 
     assert company.hourly_paid_leave_enabled is True
     assert company.hourly_paid_leave_unit_hours == 1
+    assert company.hourly_paid_leave_year_start_month == 7
+    assert company.hourly_paid_leave_year_start_day == 15
 
     get_response = client.get("/company")
 
     assert get_response.status_code == 200
     assert get_response.json()["hourly_paid_leave_enabled"] is True
     assert get_response.json()["hourly_paid_leave_unit_hours"] == 1
+    assert get_response.json()["hourly_paid_leave_year_start_month"] == 7
+    assert get_response.json()["hourly_paid_leave_year_start_day"] == 15
