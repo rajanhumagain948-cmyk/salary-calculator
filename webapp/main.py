@@ -40,6 +40,7 @@ from services.leave_service import (
     next_leave_grant,
 )
 from services.payslip_service import export_pdf
+from services.ai_service import OllamaAssistant
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -61,6 +62,7 @@ app.add_middleware(
 templates = Jinja2Templates(directory="webapp/templates")
 
 repo = PayrollRepository(Path("data/payroll.sqlite3"))
+ai_assistant = OllamaAssistant()
 serializer = URLSafeSerializer("dev-secret-change-me", salt="session")
 
 COOKIE_NAME = "salary_session"
@@ -158,6 +160,28 @@ def logout():
     resp = JSONResponse({"ok": True})
     resp.delete_cookie(COOKIE_NAME)
     return resp
+
+
+@app.post("/ai/chat")
+def ai_chat(
+    request: Request,
+    message: str = Form(...),
+):
+    user = require_user(request)
+
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="admin only")
+
+    message = normalize_input(message)
+    if not message:
+        raise HTTPException(
+            status_code=400,
+            detail="message is required",
+        )
+
+    return {
+        "answer": ai_assistant.chat(message),
+    }
 
 
 @app.get("/me")
