@@ -1022,3 +1022,52 @@ def test_admin_cannot_approve_hourly_leave_over_annual_limit(
         if item.request_id == hourly_request.request_id
     )
     assert saved.status == "申請中"
+
+
+def test_admin_can_approve_hourly_leave_within_annual_limit(
+    tmp_path,
+    monkeypatch,
+):
+    test_repo = _hourly_leave_repo(
+        tmp_path,
+        monkeypatch,
+        enabled=True,
+    )
+
+    test_repo.save_user(
+        User(
+            username="admin",
+            password_hash="unused",
+            role="admin",
+        )
+    )
+
+    hourly_request = test_repo.save_leave_request(
+        LeaveRequest(
+            employee_id="E1",
+            leave_date=date(2026, 9, 15),
+            status="申請中",
+            leave_unit="時間",
+            start_minute=9 * 60,
+            end_minute=11 * 60,
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "admin"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.post(
+        f"/leave-requests/{hourly_request.request_id}/status",
+        data={"status": "承認"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "承認"
+
+    saved = next(
+        item
+        for item in test_repo.leave_requests("E1")
+        if item.request_id == hourly_request.request_id
+    )
+    assert saved.status == "承認"
