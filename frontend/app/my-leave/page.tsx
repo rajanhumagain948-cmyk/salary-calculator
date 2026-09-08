@@ -11,6 +11,8 @@ type LeaveBalance = {
   used_days: string;
   pending_days: string;
   remaining_days: string;
+  next_grant_date: string;
+  next_grant_days: string;
 };
 
 type LeaveRequest = {
@@ -202,6 +204,56 @@ export default function MyLeavePage() {
               value={balance.pending_days}
               color="#f6c85f"
             />
+          </section>
+        )}
+
+        {balance && (
+          <section
+            style={{
+              ...panelStyle,
+              marginBottom: 18,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 15,
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  color: "#8298ae",
+                  fontSize: 10,
+                  marginBottom: 5,
+                }}
+              >
+                次回有給付与予定
+              </div>
+
+              <strong style={{ fontSize: 16 }}>
+                {balance.next_grant_date}
+              </strong>
+            </div>
+
+            <div style={{ textAlign: "right" }}>
+              <div
+                style={{
+                  color: "#8298ae",
+                  fontSize: 10,
+                  marginBottom: 5,
+                }}
+              >
+                付与予定日数
+              </div>
+
+              <strong
+                style={{
+                  color: "#9ba5ff",
+                  fontSize: 20,
+                }}
+              >
+                {Number(balance.next_grant_days).toLocaleString("ja-JP")}日
+              </strong>
+            </div>
           </section>
         )}
 
