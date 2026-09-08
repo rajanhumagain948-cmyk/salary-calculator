@@ -19,6 +19,7 @@ from models.break_record import BreakRecord
 from models.company import Company
 from models.employee import Employee
 from models.leave_request import LeaveRequest
+from models.leave_grant import LeaveGrant
 from models.shifts import Shift
 from models.work_record import WorkRecord
 from models.allowance import Allowance
@@ -27,7 +28,10 @@ from models.transportation import Transportation
 from services.payroll_service import calculate_payroll
 from services.payroll_batch_service import calculate_monthly_payrolls
 from services.payroll_auto_service import run_payroll_auto_check
-from services.leave_service import due_leave_grant
+from services.leave_service import (
+    due_leave_grant,
+    leave_grant_expiry_date,
+)
 from services.payslip_service import export_pdf
 
 @asynccontextmanager
@@ -1538,3 +1542,72 @@ def get_due_leave_grants(
         )
 
     return results
+
+
+
+@app.post("/leave-grants/confirm")
+def confirm_leave_grant(
+    request: Request,
+    employee_id: str = Form(...),
+    as_of: str = Form(...),
+):
+    user = require_user(request)
+
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="admin only")
+
+    employee_id = normalize_input(employee_id)
+
+    try:
+        target_date = date.fromisoformat(normalize_input(as_of))
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail="as_of must be YYYY-MM-DD",
+        ) from error
+
+    employee = next(
+        (
+            item
+            for item in repo.employees()
+            if item.employee_id == employee_id
+        ),
+        None,
+    )
+
+    if employee is None:
+        raise HTTPException(
+            status_code=404,
+            detail="employee not found",
+        )
+
+    candidate = due_leave_grant(
+        repo,
+        employee,
+        target_date,
+    )
+
+    if candidate is None:
+        raise HTTPException(
+            status_code=409,
+            detail="付与対象の有給休暇はありません。",
+        )
+
+    grant = repo.save_leave_grant(
+        LeaveGrant(
+            employee_id=employee.employee_id,
+            grant_date=candidate.grant_date,
+            granted_days=candidate.days,
+            expires_on=leave_grant_expiry_date(
+                candidate.grant_date
+            ),
+        )
+    )
+
+    return {
+        "grant_id": grant.grant_id,
+        "employee_id": grant.employee_id,
+        "grant_date": grant.grant_date.isoformat(),
+        "granted_days": str(grant.granted_days),
+        "expires_on": grant.expires_on.isoformat(),
+    }
