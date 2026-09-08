@@ -165,3 +165,27 @@ def test_auto_payroll_processed_month_is_persisted():
         repo = PayrollRepository(path)
 
         assert repo.auto_payroll_processed_month() == "2026-09"
+
+
+def test_legacy_company_without_hourly_leave_settings_uses_defaults():
+    with TemporaryDirectory() as folder:
+        repo = PayrollRepository(Path(folder) / "payroll.sqlite3")
+
+        repo.connection.execute(
+            """
+            INSERT OR REPLACE INTO settings
+            (key, payload)
+            VALUES (?, ?)
+            """,
+            (
+                "company",
+                '{"name":"旧会社","address":"","representative":""}',
+            ),
+        )
+        repo.connection.commit()
+
+        company = repo.company()
+
+        assert company.name == "旧会社"
+        assert company.hourly_paid_leave_enabled is False
+        assert company.hourly_paid_leave_unit_hours == 1
