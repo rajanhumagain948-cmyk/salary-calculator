@@ -27,6 +27,8 @@ type LeaveRequest = {
   status: "申請中" | "承認" | "却下";
   leave_unit: "全日" | "半日" | "時間";
   half_day_period: "午前" | "午後" | null;
+  start_minute: number | null;
+  end_minute: number | null;
   created_at: string | null;
 };
 
@@ -215,6 +217,19 @@ export default function LeaveAdminPage() {
   function unitLabel(item: LeaveRequest) {
     if (item.leave_unit === "半日") {
       return `${item.half_day_period ?? ""}半日`;
+    }
+
+    if (
+      item.leave_unit === "時間" &&
+      item.start_minute !== null &&
+      item.end_minute !== null
+    ) {
+      const time = (minute: number) =>
+        `${String(Math.floor(minute / 60)).padStart(2, "0")}:${String(
+          minute % 60
+        ).padStart(2, "0")}`;
+
+      return `${time(item.start_minute)}〜${time(item.end_minute)}`;
     }
 
     return item.leave_unit;

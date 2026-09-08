@@ -6,6 +6,11 @@ import AuthGuard from "@/components/auth/AuthGuard";
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
 
+type CompanySettings = {
+  hourly_paid_leave_enabled: boolean;
+  hourly_paid_leave_unit_hours: number;
+};
+
 type LeaveBalance = {
   granted_days: string;
   used_days: string;
@@ -24,6 +29,8 @@ type LeaveRequest = {
   status: "申請中" | "承認" | "却下";
   leave_unit: "全日" | "半日" | "時間";
   half_day_period: "午前" | "午後" | null;
+  start_minute: number | null;
+  end_minute: number | null;
   created_at: string | null;
 };
 
@@ -40,13 +47,32 @@ export default function MyLeavePage() {
   const [balance, setBalance] = useState<LeaveBalance | null>(null);
   const [leaveDate, setLeaveDate] = useState(today);
   const [leaveType, setLeaveType] = useState<
-    "全日" | "午前半日" | "午後半日"
+    "全日" | "午前半日" | "午後半日" | "時間"
   >("全日");
   const [reason, setReason] = useState("");
+  const [startTime, setStartTime] = useState("09:00");
+  const [endTime, setEndTime] = useState("10:00");
+  const [companySettings, setCompanySettings] =
+    useState<CompanySettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+
+  async function loadCompanySettings() {
+    try {
+      const res = await fetch(`${API_BASE}/company`, {
+        credentials: "include",
+        cache: "no-store",
+      });
+
+      if (res.ok) {
+        setCompanySettings(await res.json());
+      }
+    } catch {
+      // 全日・半日の申請は利用可能にする
+    }
+  }
 
   async function loadBalance() {
     try {
@@ -103,6 +129,10 @@ export default function MyLeavePage() {
 
       if (leaveType === "全日") {
         form.append("leave_unit", "全日");
+      } else if (leaveType === "時間") {
+        form.append("leave_unit", "時間");
+        form.append("start_time", startTime);
+        form.append("end_time", endTime);
       } else {
         form.append("leave_unit", "半日");
         form.append(
@@ -142,6 +172,7 @@ export default function MyLeavePage() {
   useEffect(() => {
     loadRequests();
     loadBalance();
+    loadCompanySettings();
   }, []);
 
   return (
@@ -298,6 +329,7 @@ export default function MyLeavePage() {
                       | "全日"
                       | "午前半日"
                       | "午後半日"
+                      | "時間"
                   )
                 }
                 style={fieldStyle}
@@ -305,8 +337,39 @@ export default function MyLeavePage() {
                 <option value="全日">全日</option>
                 <option value="午前半日">午前半日</option>
                 <option value="午後半日">午後半日</option>
+                {companySettings?.hourly_paid_leave_enabled && (
+                  <option value="時間">時間単位</option>
+                )}
               </select>
             </label>
+
+            {leaveType === "時間" && (
+              <>
+                <label>
+                  <span style={labelStyle}>開始時刻</span>
+                  <input
+                    type="time"
+                    value={startTime}
+                    step={3600}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    style={fieldStyle}
+                    required
+                  />
+                </label>
+
+                <label>
+                  <span style={labelStyle}>終了時刻</span>
+                  <input
+                    type="time"
+                    value={endTime}
+                    step={3600}
+                    onChange={(e) => setEndTime(e.target.value)}
+                    style={fieldStyle}
+                    required
+                  />
+                </label>
+              </>
+            )}
 
             <label>
               <span style={labelStyle}>理由</span>
@@ -394,7 +457,11 @@ export default function MyLeavePage() {
                       <td style={cellStyle}>
                         {item.leave_unit === "半日"
                           ? `${item.half_day_period ?? ""}半日`
-                          : item.leave_unit}
+                          : item.leave_unit === "時間" &&
+                              item.start_minute !== null &&
+                              item.end_minute !== null
+                            ? `${String(Math.floor(item.start_minute / 60)).padStart(2, "0")}:${String(item.start_minute % 60).padStart(2, "0")}〜${String(Math.floor(item.end_minute / 60)).padStart(2, "0")}:${String(item.end_minute % 60).padStart(2, "0")}`
+                            : item.leave_unit}
                       </td>
                       <td style={cellStyle}>
                         {item.reason || "—"}
