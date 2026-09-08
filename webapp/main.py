@@ -1381,6 +1381,8 @@ def leave_request_to_dict(item: LeaveRequest) -> dict:
         "leave_date": item.leave_date.isoformat(),
         "reason": item.reason,
         "status": item.status,
+        "leave_unit": item.leave_unit,
+        "half_day_period": item.half_day_period,
         "created_at": (
             item.created_at.isoformat()
             if item.created_at is not None

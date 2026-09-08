@@ -19,6 +19,8 @@ type LeaveRequest = {
   leave_date: string;
   reason: string;
   status: "申請中" | "承認" | "却下";
+  leave_unit: "全日" | "半日" | "時間";
+  half_day_period: "午前" | "午後" | null;
   created_at: string | null;
 };
 
@@ -34,6 +36,9 @@ export default function MyLeavePage() {
   const [items, setItems] = useState<LeaveRequest[]>([]);
   const [balance, setBalance] = useState<LeaveBalance | null>(null);
   const [leaveDate, setLeaveDate] = useState(today);
+  const [leaveType, setLeaveType] = useState<
+    "全日" | "午前半日" | "午後半日"
+  >("全日");
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -92,6 +97,16 @@ export default function MyLeavePage() {
       const form = new FormData();
       form.append("leave_date", leaveDate);
       form.append("reason", reason);
+
+      if (leaveType === "全日") {
+        form.append("leave_unit", "全日");
+      } else {
+        form.append("leave_unit", "半日");
+        form.append(
+          "half_day_period",
+          leaveType === "午前半日" ? "午前" : "午後"
+        );
+      }
 
       const res = await fetch(`${API_BASE}/my/leave-requests`, {
         method: "POST",
@@ -199,7 +214,7 @@ export default function MyLeavePage() {
             onSubmit={submit}
             style={{
               display: "grid",
-              gridTemplateColumns: "220px minmax(0, 1fr) auto",
+              gridTemplateColumns: "180px 180px minmax(0, 1fr) auto",
               gap: 12,
               alignItems: "end",
             }}
@@ -213,6 +228,26 @@ export default function MyLeavePage() {
                 onChange={(event) => setLeaveDate(event.target.value)}
                 style={fieldStyle}
               />
+            </label>
+
+            <label>
+              <span style={labelStyle}>取得単位</span>
+              <select
+                value={leaveType}
+                onChange={(event) =>
+                  setLeaveType(
+                    event.target.value as
+                      | "全日"
+                      | "午前半日"
+                      | "午後半日"
+                  )
+                }
+                style={fieldStyle}
+              >
+                <option value="全日">全日</option>
+                <option value="午前半日">午前半日</option>
+                <option value="午後半日">午後半日</option>
+              </select>
             </label>
 
             <label>
@@ -274,6 +309,7 @@ export default function MyLeavePage() {
                     }}
                   >
                     <th style={cellStyle}>取得日</th>
+                    <th style={cellStyle}>取得単位</th>
                     <th style={cellStyle}>理由</th>
                     <th style={cellStyle}>状態</th>
                   </tr>
@@ -289,6 +325,11 @@ export default function MyLeavePage() {
                       }}
                     >
                       <td style={cellStyle}>{item.leave_date}</td>
+                      <td style={cellStyle}>
+                        {item.leave_unit === "半日"
+                          ? `${item.half_day_period ?? ""}半日`
+                          : item.leave_unit}
+                      </td>
                       <td style={cellStyle}>
                         {item.reason || "—"}
                       </td>
