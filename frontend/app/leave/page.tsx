@@ -11,6 +11,14 @@ type Employee = {
   name: string;
 };
 
+type LeaveGrantCandidate = {
+  employee_id: string;
+  name: string;
+  grant_date: string;
+  days: string;
+  service_months: number;
+};
+
 type LeaveRequest = {
   request_id: number;
   employee_id: string;
@@ -25,6 +33,12 @@ type LeaveRequest = {
 export default function LeaveAdminPage() {
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [grantCandidates, setGrantCandidates] = useState<
+    LeaveGrantCandidate[]
+  >([]);
+  const [grantingEmployeeId, setGrantingEmployeeId] = useState<
+    string | null
+  >(null);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [error, setError] = useState("");
@@ -35,7 +49,9 @@ export default function LeaveAdminPage() {
     setError("");
 
     try {
-      const [requestsRes, employeesRes] = await Promise.all([
+      const today = new Date().toISOString().slice(0, 10);
+
+      const [requestsRes, employeesRes, grantsRes] = await Promise.all([
         fetch(`${API_BASE}/leave-requests`, {
           credentials: "include",
           cache: "no-store",
@@ -44,6 +60,13 @@ export default function LeaveAdminPage() {
           credentials: "include",
           cache: "no-store",
         }),
+        fetch(
+          `${API_BASE}/leave-grants/due?as_of=${today}`,
+          {
+            credentials: "include",
+            cache: "no-store",
+          }
+        ),
       ]);
 
       if (!requestsRes.ok) {
@@ -56,12 +79,71 @@ export default function LeaveAdminPage() {
         return;
       }
 
+      if (!grantsRes.ok) {
+        setError(
+          `有給付与候補を取得できませんでした: ${grantsRes.status}`
+        );
+        return;
+      }
+
       setRequests(await requestsRes.json());
       setEmployees(await employeesRes.json());
+      setGrantCandidates(await grantsRes.json());
     } catch {
       setError("有給管理データの取得中に通信エラーが発生しました。");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function confirmGrant(
+    candidate: LeaveGrantCandidate
+  ) {
+    if (
+      !window.confirm(
+        `${candidate.name} に ${candidate.days}日の有給を付与しますか？\n` +
+          `付与日: ${candidate.grant_date}\n` +
+          "出勤率などの付与要件を確認してから実行してください。"
+      )
+    ) {
+      return;
+    }
+
+    setGrantingEmployeeId(candidate.employee_id);
+    setError("");
+    setMessage("");
+
+    try {
+      const form = new FormData();
+      form.append("employee_id", candidate.employee_id);
+      form.append("as_of", new Date().toISOString().slice(0, 10));
+
+      const res = await fetch(`${API_BASE}/leave-grants/confirm`, {
+        method: "POST",
+        credentials: "include",
+        body: form,
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+
+        setError(
+          typeof body?.detail === "string"
+            ? body.detail
+            : `有給を付与できませんでした: ${res.status}`
+        );
+        return;
+      }
+
+      setMessage(
+        `${candidate.name} に ${candidate.days}日の有給を付与しました。`
+      );
+
+      await loadData();
+    } catch {
+      setError("有給付与中に通信エラーが発生しました。");
+    } finally {
+      setGrantingEmployeeId(null);
     }
   }
 
@@ -113,6 +195,10 @@ export default function LeaveAdminPage() {
       setUpdatingId(null);
     }
   }
+
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const pendingCount = useMemo(
     () => requests.filter((item) => item.status === "申請中").length,
@@ -174,6 +260,95 @@ export default function LeaveAdminPage() {
 
         {error && <div style={errorStyle}>{error}</div>}
         {message && <div style={successStyle}>{message}</div>}
+
+        <section
+          style={{
+            ...panelStyle,
+            marginBottom: 18,
+          }}
+        >
+          <div style={{ marginBottom: 14 }}>
+            <h2 style={{ margin: 0, fontSize: 17 }}>
+              有給付与対象
+            </h2>
+            <p
+              style={{
+                margin: "5px 0 0",
+                color: "#71879d",
+                fontSize: 10,
+              }}
+            >
+              付与予定日が到来した従業員です。出勤率などの付与要件を確認してから付与してください。
+            </p>
+          </div>
+
+          {grantCandidates.length === 0 ? (
+            <div style={emptyStyle}>
+              現在、有給付与の確認が必要な従業員はいません。
+            </div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={tableStyle}>
+                <thead>
+                  <tr style={{ color: "#71879d", textAlign: "left" }}>
+                    <th style={cellStyle}>従業員</th>
+                    <th style={cellStyle}>付与予定日</th>
+                    <th style={cellStyle}>付与日数</th>
+                    <th style={cellStyle}>勤続期間</th>
+                    <th style={cellStyle}>確認</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {grantCandidates.map((candidate) => (
+                    <tr
+                      key={`${candidate.employee_id}-${candidate.grant_date}`}
+                      style={{
+                        borderTop:
+                          "1px solid rgba(148,180,216,.09)",
+                      }}
+                    >
+                      <td style={cellStyle}>
+                        <strong>{candidate.name}</strong>
+                        <div style={subtleStyle}>
+                          {candidate.employee_id}
+                        </div>
+                      </td>
+
+                      <td style={cellStyle}>
+                        {candidate.grant_date}
+                      </td>
+
+                      <td style={cellStyle}>
+                        <strong style={{ color: "#9ba5ff" }}>
+                          {Number(candidate.days).toLocaleString("ja-JP")}日
+                        </strong>
+                      </td>
+
+                      <td style={cellStyle}>
+                        {candidate.service_months}か月
+                      </td>
+
+                      <td style={cellStyle}>
+                        <button
+                          onClick={() => confirmGrant(candidate)}
+                          disabled={
+                            grantingEmployeeId === candidate.employee_id
+                          }
+                          style={approveButtonStyle}
+                        >
+                          {grantingEmployeeId === candidate.employee_id
+                            ? "付与中..."
+                            : "要件確認済み・付与する"}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
 
         <section style={panelStyle}>
           <div
