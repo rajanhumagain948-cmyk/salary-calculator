@@ -159,3 +159,47 @@ def leave_grant_date(
     day = min(hire_date.day, last_day)
 
     return date(year, month, day)
+
+
+@dataclass(slots=True)
+class LeaveGrantCandidate:
+    grant_date: date
+    days: Decimal
+    service_months: int
+
+
+def due_leave_grant(
+    repo: PayrollRepository,
+    employee,
+    as_of: date,
+) -> LeaveGrantCandidate | None:
+    """到来済みで、まだ登録されていない最も古い付与候補を返す。"""
+    existing_dates = {
+        grant.grant_date
+        for grant in repo.leave_grants(employee.employee_id)
+    }
+
+    grant_index = 0
+
+    while True:
+        scheduled_date = leave_grant_date(
+            employee.hire_date,
+            grant_index,
+        )
+
+        if scheduled_date > as_of:
+            return None
+
+        if scheduled_date not in existing_dates:
+            service_months = 6 + grant_index * 12
+
+            return LeaveGrantCandidate(
+                grant_date=scheduled_date,
+                days=employee_entitlement_days(
+                    employee,
+                    service_months,
+                ),
+                service_months=service_months,
+            )
+
+        grant_index += 1

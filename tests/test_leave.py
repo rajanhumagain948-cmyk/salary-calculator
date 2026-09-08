@@ -184,3 +184,47 @@ def test_paid_leave_grant_date_schedule_handles_month_end():
     # 月末入社でも存在しない日付にならない
     assert leave_grant_date(date(2026, 8, 31), 0) == date(2027, 2, 28)
     assert leave_grant_date(date(2027, 8, 31), 0) == date(2028, 2, 29)
+
+
+def test_due_leave_grant_candidate_is_not_returned_twice(tmp_path):
+    from models.employee import Employee
+    from services.leave_service import due_leave_grant
+
+    repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+
+    employee = Employee(
+        employee_id="E1",
+        name="付与候補テスト",
+        employment_type="正社員",
+        hire_date=date(2026, 3, 1),
+        pay_type="月給",
+        monthly_salary=Decimal("200000"),
+        weekly_hours=Decimal("40"),
+        weekly_days=5,
+    )
+
+    candidate = due_leave_grant(
+        repo,
+        employee,
+        date(2026, 9, 7),
+    )
+
+    assert candidate is not None
+    assert candidate.grant_date == date(2026, 9, 1)
+    assert candidate.days == Decimal("10")
+    assert candidate.service_months == 6
+
+    repo.save_leave_grant(
+        LeaveGrant(
+            employee_id="E1",
+            grant_date=candidate.grant_date,
+            granted_days=candidate.days,
+            expires_on=date(2028, 8, 31),
+        )
+    )
+
+    assert due_leave_grant(
+        repo,
+        employee,
+        date(2026, 9, 7),
+    ) is None
