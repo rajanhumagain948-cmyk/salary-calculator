@@ -320,3 +320,64 @@ def test_admin_can_confirm_due_leave_grant(tmp_path, monkeypatch):
 
     assert len(grants) == 1
     assert grants[0].granted_days == Decimal("10")
+
+
+def test_employee_can_view_own_leave_balance(tmp_path, monkeypatch):
+    from decimal import Decimal
+
+    from models.leave_grant import LeaveGrant
+
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    test_repo.save_user(
+        User(
+            username="employee",
+            password_hash="unused",
+            role="employee",
+            employee_id="E1",
+        )
+    )
+
+    test_repo.save_leave_grant(
+        LeaveGrant(
+            employee_id="E1",
+            grant_date=date(2026, 7, 1),
+            granted_days=Decimal("10"),
+            expires_on=date(2028, 6, 30),
+        )
+    )
+
+    test_repo.save_leave_request(
+        LeaveRequest(
+            employee_id="E1",
+            leave_date=date(2026, 9, 10),
+            status="承認",
+        )
+    )
+
+    test_repo.save_leave_request(
+        LeaveRequest(
+            employee_id="E1",
+            leave_date=date(2026, 9, 20),
+            status="申請中",
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "employee"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.get(
+        "/my/leave-balance",
+        params={"as_of": "2026-09-30"},
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["granted_days"] == "10"
+    assert data["used_days"] == "1"
+    assert data["pending_days"] == "1"
+    assert data["remaining_days"] == "9"

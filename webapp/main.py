@@ -29,6 +29,7 @@ from services.payroll_service import calculate_payroll
 from services.payroll_batch_service import calculate_monthly_payrolls
 from services.payroll_auto_service import run_payroll_auto_check
 from services.leave_service import (
+    calculate_leave_balance,
     due_leave_grant,
     leave_grant_expiry_date,
 )
@@ -1610,4 +1611,40 @@ def confirm_leave_grant(
         "grant_date": grant.grant_date.isoformat(),
         "granted_days": str(grant.granted_days),
         "expires_on": grant.expires_on.isoformat(),
+    }
+
+
+
+@app.get("/my/leave-balance")
+def get_my_leave_balance(
+    request: Request,
+    as_of: str,
+):
+    user = require_user(request)
+
+    if user.role != "employee":
+        raise HTTPException(status_code=403, detail="employee only")
+
+    if not user.employee_id:
+        raise HTTPException(status_code=400, detail="employee_id not set")
+
+    try:
+        target_date = date.fromisoformat(normalize_input(as_of))
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail="as_of must be YYYY-MM-DD",
+        ) from error
+
+    balance = calculate_leave_balance(
+        repo,
+        normalize_input(user.employee_id),
+        target_date,
+    )
+
+    return {
+        "granted_days": str(balance.granted_days),
+        "used_days": str(balance.used_days),
+        "pending_days": str(balance.pending_days),
+        "remaining_days": str(balance.remaining_days),
     }
