@@ -1708,6 +1708,44 @@ def update_leave_request_status(
                 detail="有給休暇の残日数が不足しているため承認できません。",
             )
 
+        if existing.leave_unit == "時間":
+            company = repo.company()
+            terms = repo.terms(existing.employee_id)
+
+            if (
+                existing.start_minute is None
+                or existing.end_minute is None
+            ):
+                raise HTTPException(
+                    status_code=409,
+                    detail="時間単位年休の時間帯が不正です。",
+                )
+
+            requested_hours = (
+                existing.end_minute - existing.start_minute
+            ) // 60
+
+            other_requests = [
+                item
+                for item in repo.leave_requests(existing.employee_id)
+                if item.request_id != existing.request_id
+            ]
+
+            try:
+                validate_hourly_annual_limit(
+                    other_requests,
+                    requested_hours=requested_hours,
+                    standard_daily_minutes=terms.standard_daily_minutes,
+                    as_of=existing.leave_date,
+                    year_start_month=company.hourly_paid_leave_year_start_month,
+                    year_start_day=company.hourly_paid_leave_year_start_day,
+                )
+            except ValueError as error:
+                raise HTTPException(
+                    status_code=409,
+                    detail=str(error),
+                ) from error
+
     repo.update_leave_status(request_id, status)
 
     updated = next(
