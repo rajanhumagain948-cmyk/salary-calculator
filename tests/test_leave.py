@@ -439,3 +439,69 @@ def test_hourly_leave_request_times_are_saved_and_loaded(tmp_path):
     assert saved[0].leave_unit == "時間"
     assert saved[0].start_minute == 540
     assert saved[0].end_minute == 660
+
+
+def test_hourly_leave_duration_validates_time_range_and_unit():
+    from services.leave_service import hourly_leave_duration_hours
+
+    assert hourly_leave_duration_hours(
+        9 * 60,
+        11 * 60,
+        unit_hours=1,
+    ) == 2
+
+    # 2時間単位なら4時間取得は可能
+    assert hourly_leave_duration_hours(
+        9 * 60,
+        13 * 60,
+        unit_hours=2,
+    ) == 4
+
+    import pytest
+
+    # 開始と終了が同じ、または逆転は不可
+    with pytest.raises(ValueError):
+        hourly_leave_duration_hours(
+            11 * 60,
+            9 * 60,
+            unit_hours=1,
+        )
+
+    # 1時間単位なのに1時間30分は不可
+    with pytest.raises(ValueError):
+        hourly_leave_duration_hours(
+            9 * 60,
+            10 * 60 + 30,
+            unit_hours=1,
+        )
+
+    # 2時間単位なのに3時間は不可
+    with pytest.raises(ValueError):
+        hourly_leave_duration_hours(
+            9 * 60,
+            12 * 60,
+            unit_hours=2,
+        )
+
+
+def test_hourly_leave_request_cannot_exceed_one_day_equivalent():
+    from services.leave_service import validate_hourly_leave_request
+
+    # 8時間勤務で8時間取得は可能
+    assert validate_hourly_leave_request(
+        start_minute=9 * 60,
+        end_minute=17 * 60,
+        unit_hours=1,
+        standard_daily_minutes=480,
+    ) == 8
+
+    import pytest
+
+    # 1日8時間相当なのに9時間は不可
+    with pytest.raises(ValueError):
+        validate_hourly_leave_request(
+            start_minute=9 * 60,
+            end_minute=18 * 60,
+            unit_hours=1,
+            standard_daily_minutes=480,
+        )

@@ -329,3 +329,64 @@ def hourly_leave_annual_limit_hours(
     return hourly_leave_hours_per_day(
         standard_daily_minutes
     ) * 5
+
+
+def hourly_leave_duration_hours(
+    start_minute: int,
+    end_minute: int,
+    *,
+    unit_hours: int,
+) -> int:
+    """時間単位年休の時間帯を検証し、取得時間数を返す。"""
+    if unit_hours <= 0:
+        raise ValueError("取得単位は1時間以上で設定してください。")
+
+    if not (0 <= start_minute < 24 * 60):
+        raise ValueError("開始時刻が不正です。")
+
+    if not (0 < end_minute <= 24 * 60):
+        raise ValueError("終了時刻が不正です。")
+
+    if end_minute <= start_minute:
+        raise ValueError("終了時刻は開始時刻より後にしてください。")
+
+    duration_minutes = end_minute - start_minute
+
+    # 時間単位年休なので分単位の端数は許可しない。
+    if duration_minutes % 60 != 0:
+        raise ValueError("時間単位年休は1時間単位で指定してください。")
+
+    duration_hours = duration_minutes // 60
+
+    if duration_hours % unit_hours != 0:
+        raise ValueError(
+            f"時間単位年休は{unit_hours}時間単位で指定してください。"
+        )
+
+    return duration_hours
+
+
+def validate_hourly_leave_request(
+    *,
+    start_minute: int,
+    end_minute: int,
+    unit_hours: int,
+    standard_daily_minutes: int,
+) -> int:
+    """時間単位年休1回分を検証し、取得時間数を返す。"""
+    duration_hours = hourly_leave_duration_hours(
+        start_minute,
+        end_minute,
+        unit_hours=unit_hours,
+    )
+
+    hours_per_day = hourly_leave_hours_per_day(
+        standard_daily_minutes
+    )
+
+    if duration_hours > hours_per_day:
+        raise ValueError(
+            "1回の時間単位年休が1日相当時間数を超えています。"
+        )
+
+    return duration_hours
