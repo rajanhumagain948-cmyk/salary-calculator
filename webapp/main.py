@@ -27,6 +27,7 @@ from models.transportation import Transportation
 from services.payroll_service import calculate_payroll
 from services.payroll_batch_service import calculate_monthly_payrolls
 from services.payroll_auto_service import run_payroll_auto_check
+from services.leave_service import due_leave_grant
 from services.payslip_service import export_pdf
 
 @asynccontextmanager
@@ -1493,3 +1494,47 @@ def update_leave_request_status(
     )
 
     return leave_request_to_dict(updated)
+
+
+
+@app.get("/leave-grants/due")
+def get_due_leave_grants(
+    request: Request,
+    as_of: str,
+):
+    user = require_user(request)
+
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="admin only")
+
+    try:
+        target_date = date.fromisoformat(normalize_input(as_of))
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail="as_of must be YYYY-MM-DD",
+        ) from error
+
+    results = []
+
+    for employee in repo.employees():
+        candidate = due_leave_grant(
+            repo,
+            employee,
+            target_date,
+        )
+
+        if candidate is None:
+            continue
+
+        results.append(
+            {
+                "employee_id": employee.employee_id,
+                "name": employee.name,
+                "grant_date": candidate.grant_date.isoformat(),
+                "days": str(candidate.days),
+                "service_months": candidate.service_months,
+            }
+        )
+
+    return results

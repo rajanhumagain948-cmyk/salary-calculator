@@ -212,3 +212,54 @@ def test_employee_cannot_approve_leave_request(tmp_path, monkeypatch):
 
     assert len(saved) == 1
     assert saved[0].status == "申請中"
+
+
+def test_admin_can_list_due_leave_grants(tmp_path, monkeypatch):
+    from datetime import date
+    from decimal import Decimal
+
+    from models.employee import Employee
+
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    test_repo.save_user(
+        User(
+            username="admin",
+            password_hash="unused",
+            role="admin",
+        )
+    )
+
+    test_repo.save_employee(
+        Employee(
+            employee_id="E1",
+            name="付与対象",
+            employment_type="正社員",
+            hire_date=date(2026, 3, 1),
+            pay_type="月給",
+            monthly_salary=Decimal("200000"),
+            weekly_hours=Decimal("40"),
+            weekly_days=5,
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "admin"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.get(
+        "/leave-grants/due",
+        params={"as_of": "2026-09-07"},
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert len(data) == 1
+    assert data[0]["employee_id"] == "E1"
+    assert data[0]["name"] == "付与対象"
+    assert data[0]["grant_date"] == "2026-09-01"
+    assert data[0]["days"] == "10"
+    assert data[0]["service_months"] == 6
