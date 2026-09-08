@@ -19,5 +19,7 @@ class LeaveRequest:
     status: LeaveStatus = "申請中"
     leave_unit: LeaveUnit = "全日"
     half_day_period: HalfDayPeriod | None = None
+    start_minute: int | None = None
+    end_minute: int | None = None
     request_id: int | None = None
     created_at: datetime | None = None

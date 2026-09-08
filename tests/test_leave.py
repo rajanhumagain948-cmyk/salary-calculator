@@ -415,3 +415,27 @@ def test_hourly_paid_leave_annual_limit_is_five_days():
 
     # 1日7時間相当 → 年35時間
     assert hourly_leave_annual_limit_hours(420) == 35
+
+
+def test_hourly_leave_request_times_are_saved_and_loaded(tmp_path):
+    from models.leave_request import LeaveRequest
+
+    repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+
+    repo.save_leave_request(
+        LeaveRequest(
+            employee_id="E1",
+            leave_date=date(2026, 9, 15),
+            reason="通院",
+            leave_unit="時間",
+            start_minute=9 * 60,
+            end_minute=11 * 60,
+        )
+    )
+
+    saved = repo.leave_requests("E1")
+
+    assert len(saved) == 1
+    assert saved[0].leave_unit == "時間"
+    assert saved[0].start_minute == 540
+    assert saved[0].end_minute == 660
