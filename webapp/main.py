@@ -304,6 +304,7 @@ def ai_chat(
                 f"給与warning件数: {payroll_status['warning_count']}\n"
                 f"給与blocking issue件数: "
                 f"{payroll_status['blocking_issue_count']}\n"
+                "給与warningは給与計算結果の警告であり、勤怠警告とは限りません。\n"
                 f"有給残日数: {leave_balance.remaining_days}\n"
                 f"有給申請中日数: {leave_balance.pending_days}\n"
                 f"有給申請可能日数: {leave_balance.available_days}\n"
