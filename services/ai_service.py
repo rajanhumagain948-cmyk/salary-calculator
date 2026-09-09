@@ -34,16 +34,24 @@ class OllamaAssistant:
         self.post_json = post_json
 
     def chat(self, message: str) -> str:
+        return self.chat_messages(
+            [
+                {
+                    "role": "user",
+                    "content": message,
+                }
+            ]
+        )
+
+    def chat_messages(
+        self,
+        messages: list[dict[str, str]],
+    ) -> str:
         response = self.post_json(
             f"{self.base_url}/api/chat",
             {
                 "model": self.model,
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": message,
-                    }
-                ],
+                "messages": messages,
                 "stream": False,
             },
         )

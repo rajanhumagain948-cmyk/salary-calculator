@@ -32,3 +32,33 @@ def test_ollama_assistant_returns_message_content():
             "content": "今月の給与を確認して",
         }
     ]
+
+
+def test_ollama_assistant_can_send_conversation_messages():
+    captured = {}
+
+    def fake_post(url, payload):
+        captured["payload"] = payload
+        return {
+            "message": {
+                "role": "assistant",
+                "content": "続きの回答です。",
+            }
+        }
+
+    assistant = OllamaAssistant(post_json=fake_post)
+
+    answer = assistant.chat_messages(
+        [
+            {"role": "user", "content": "9月の状況を教えて"},
+            {"role": "assistant", "content": "給与確定は3件です。"},
+            {"role": "user", "content": "その中で問題は？"},
+        ]
+    )
+
+    assert answer == "続きの回答です。"
+    assert captured["payload"]["messages"] == [
+        {"role": "user", "content": "9月の状況を教えて"},
+        {"role": "assistant", "content": "給与確定は3件です。"},
+        {"role": "user", "content": "その中で問題は？"},
+    ]
