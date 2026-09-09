@@ -205,3 +205,51 @@ def test_ai_chat_returns_503_when_assistant_is_unavailable(
 
     assert response.status_code == 503
     assert response.json()["detail"] == "AIアシスタントに接続できません。"
+
+
+def test_ai_chat_passes_valid_conversation_history(tmp_path, monkeypatch):
+    import json
+
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    captured = {}
+
+    class ConversationAssistant:
+        def chat_messages(self, messages):
+            captured["messages"] = messages
+            return "続きの回答です。"
+
+    monkeypatch.setattr(main, "ai_assistant", ConversationAssistant())
+
+    test_repo.save_user(
+        User(
+            username="admin",
+            password_hash="unused",
+            role="admin",
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "admin"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    history = [
+        {"role": "user", "content": "9月の状況を教えて"},
+        {"role": "assistant", "content": "給与確定は3件です。"},
+    ]
+
+    response = client.post(
+        "/ai/chat",
+        data={
+            "message": "その中で問題は？",
+            "history": json.dumps(history, ensure_ascii=False),
+        },
+    )
+
+    assert response.status_code == 200
+    assert captured["messages"] == [
+        {"role": "user", "content": "9月の状況を教えて"},
+        {"role": "assistant", "content": "給与確定は3件です。"},
+        {"role": "user", "content": "その中で問題は?"},
+    ]

@@ -169,6 +169,7 @@ def ai_chat(
     request: Request,
     message: str = Form(...),
     year_month: str | None = Form(None),
+    history: str | None = Form(None),
 ):
     user = require_user(request)
 
@@ -223,8 +224,54 @@ def ai_chat(
             f"質問: {message}"
         )
 
+    conversation = []
+
+    if history:
+        try:
+            parsed_history = json.loads(history)
+        except json.JSONDecodeError as error:
+            raise HTTPException(
+                status_code=400,
+                detail="invalid AI chat history",
+            ) from error
+
+        if not isinstance(parsed_history, list) or len(parsed_history) > 20:
+            raise HTTPException(
+                status_code=400,
+                detail="invalid AI chat history",
+            )
+
+        for item in parsed_history:
+            if (
+                not isinstance(item, dict)
+                or item.get("role") not in ("user", "assistant")
+                or not isinstance(item.get("content"), str)
+                or not item["content"].strip()
+            ):
+                raise HTTPException(
+                    status_code=400,
+                    detail="invalid AI chat history",
+                )
+
+            conversation.append(
+                {
+                    "role": item["role"],
+                    "content": item["content"].strip(),
+                }
+            )
+
+    conversation.append(
+        {
+            "role": "user",
+            "content": prompt,
+        }
+    )
+
     try:
-        answer = ai_assistant.chat(prompt)
+        if history:
+            answer = ai_assistant.chat_messages(conversation)
+        else:
+            answer = ai_assistant.chat(prompt)
     except (ConnectionError, URLError) as error:
         raise HTTPException(
             status_code=503,
