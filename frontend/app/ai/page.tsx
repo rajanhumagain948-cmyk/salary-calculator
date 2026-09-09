@@ -14,7 +14,9 @@ function currentYearMonth() {
 export default function AiPage() {
   const [yearMonth, setYearMonth] = useState(currentYearMonth);
   const [message, setMessage] = useState("");
-  const [answer, setAnswer] = useState("");
+  const [messages, setMessages] = useState<
+    { role: "user" | "assistant"; content: string }[]
+  >([]);
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
 
@@ -28,7 +30,6 @@ export default function AiPage() {
 
     setSending(true);
     setError("");
-    setAnswer("");
 
     try {
       const form = new FormData();
@@ -52,7 +53,12 @@ export default function AiPage() {
         return;
       }
 
-      setAnswer(data.answer ?? "");
+      setMessages((current) => [
+        ...current,
+        { role: "user", content: question },
+        { role: "assistant", content: data.answer ?? "" },
+      ]);
+      setMessage("");
     } catch {
       setError("AIとの通信中にエラーが発生しました。");
     } finally {
@@ -158,19 +164,37 @@ export default function AiPage() {
             </p>
           )}
 
-          {answer && (
+          {messages.length > 0 && (
             <div
               style={{
+                display: "grid",
+                gap: 12,
                 marginTop: 24,
-                padding: 18,
-                borderRadius: 14,
-                background: "rgba(0,0,0,0.18)",
-                whiteSpace: "pre-wrap",
-                lineHeight: 1.7,
               }}
             >
-              <strong>AIからの回答</strong>
-              <div style={{ marginTop: 10 }}>{answer}</div>
+              {messages.map((item, index) => (
+                <div
+                  key={`${item.role}-${index}`}
+                  style={{
+                    justifySelf:
+                      item.role === "user" ? "end" : "start",
+                    maxWidth: "85%",
+                    padding: "12px 16px",
+                    borderRadius: 14,
+                    background:
+                      item.role === "user"
+                        ? "rgba(100,116,255,0.24)"
+                        : "rgba(0,0,0,0.18)",
+                    whiteSpace: "pre-wrap",
+                    lineHeight: 1.7,
+                  }}
+                >
+                  <strong>
+                    {item.role === "user" ? "あなた" : "AI"}
+                  </strong>
+                  <div style={{ marginTop: 6 }}>{item.content}</div>
+                </div>
+              ))}
             </div>
           )}
         </section>
