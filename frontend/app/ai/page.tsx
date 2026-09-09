@@ -117,6 +117,16 @@ export default function AiPage() {
               <textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
+                onKeyDown={(e) => {
+                  if (
+                    e.key === "Enter" &&
+                    !e.shiftKey &&
+                    !e.nativeEvent.isComposing
+                  ) {
+                    e.preventDefault();
+                    e.currentTarget.form?.requestSubmit();
+                  }
+                }}
                 placeholder="例: 今月の給与処理状況を教えて"
                 rows={5}
                 style={{
