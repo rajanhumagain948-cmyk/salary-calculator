@@ -45,6 +45,7 @@ from services.ai_service import OllamaAssistant
 from services.ai_context_service import (
     build_ai_monthly_summary,
     build_employee_attendance_summary,
+    build_employee_payroll_summary,
     find_referenced_employee,
 )
 
@@ -211,10 +212,12 @@ def ai_chat(
 
         employees = repo.employees()
 
+        payrolls = repo.payroll_results(year_month)
+
         summary = build_ai_monthly_summary(
             year_month=year_month,
             employee_count=len(employees),
-            payrolls=repo.payroll_results(year_month),
+            payrolls=payrolls,
             leave_requests=repo.leave_requests(),
         )
 
@@ -236,12 +239,34 @@ def ai_chat(
                 ),
             )
 
+            employee_payroll = next(
+                (
+                    item
+                    for item in payrolls
+                    if item.employee_id == referenced_employee.employee_id
+                ),
+                None,
+            )
+
+            payroll_status = build_employee_payroll_summary(
+                employee_id=referenced_employee.employee_id,
+                year_month=year_month,
+                payroll=employee_payroll,
+            )
+
             employee_context = (
                 "\n"
                 f"対象従業員: {attendance['employee_name']} "
                 f"({attendance['employee_id']})\n"
                 f"勤怠記録件数: {attendance['record_count']}\n"
                 f"出勤日数: {attendance['attendance_days']}\n"
+                f"給与計算済み: "
+                f"{'はい' if payroll_status['calculated'] else 'いいえ'}\n"
+                f"給与確定済み: "
+                f"{'はい' if payroll_status['finalized'] else 'いいえ'}\n"
+                f"給与warning件数: {payroll_status['warning_count']}\n"
+                f"給与blocking issue件数: "
+                f"{payroll_status['blocking_issue_count']}\n"
             )
 
         prompt = (
