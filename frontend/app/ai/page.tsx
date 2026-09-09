@@ -36,6 +36,10 @@ export default function AiPage() {
       form.append("message", question);
       form.append("year_month", yearMonth);
 
+      if (messages.length > 0) {
+        form.append("history", JSON.stringify(messages));
+      }
+
       const res = await fetch(`${API_BASE}/ai/chat`, {
         method: "POST",
         credentials: "include",
