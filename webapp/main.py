@@ -42,7 +42,11 @@ from services.leave_service import (
 )
 from services.payslip_service import export_pdf
 from services.ai_service import OllamaAssistant
-from services.ai_context_service import build_ai_monthly_summary
+from services.ai_context_service import (
+    build_ai_monthly_summary,
+    build_employee_attendance_summary,
+    find_referenced_employee,
+)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -205,12 +209,40 @@ def ai_chat(
                 detail="year_month must be YYYY-MM",
             )
 
+        employees = repo.employees()
+
         summary = build_ai_monthly_summary(
             year_month=year_month,
-            employee_count=len(repo.employees()),
+            employee_count=len(employees),
             payrolls=repo.payroll_results(year_month),
             leave_requests=repo.leave_requests(),
         )
+
+        referenced_employee = find_referenced_employee(
+            message,
+            employees,
+        )
+
+        employee_context = ""
+
+        if referenced_employee is not None:
+            attendance = build_employee_attendance_summary(
+                employee_id=referenced_employee.employee_id,
+                employee_name=referenced_employee.name,
+                year_month=year_month,
+                records=repo.work_records(
+                    referenced_employee.employee_id,
+                    year_month,
+                ),
+            )
+
+            employee_context = (
+                "\n"
+                f"対象従業員: {attendance['employee_name']} "
+                f"({attendance['employee_id']})\n"
+                f"勤怠記録件数: {attendance['record_count']}\n"
+                f"出勤日数: {attendance['attendance_days']}\n"
+            )
 
         prompt = (
             "以下は給与管理システムの読み取り専用月次サマリーです。\n"
@@ -220,6 +252,7 @@ def ai_chat(
             f"給与確定済み件数: {summary['finalized_payroll_count']}\n"
             f"給与確定不可件数: {summary['blocked_payroll_count']}\n"
             f"有給申請中件数: {summary['pending_leave_count']}\n"
+            f"{employee_context}"
             "\n"
             f"質問: {message}"
         )

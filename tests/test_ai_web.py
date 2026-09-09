@@ -292,3 +292,71 @@ def test_ai_chat_rejects_system_role_in_history(tmp_path, monkeypatch):
 
     assert response.status_code == 400
     assert response.json()["detail"] == "invalid AI chat history"
+
+
+def test_ai_chat_adds_referenced_employee_attendance(tmp_path, monkeypatch):
+    from datetime import date
+    from decimal import Decimal
+
+    from models.employee import Employee
+    from models.work_record import WorkRecord
+
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    captured = {}
+
+    class CapturingAssistant:
+        def chat(self, message: str) -> str:
+            captured["message"] = message
+            return "勤怠状況を回答しました。"
+
+    monkeypatch.setattr(main, "ai_assistant", CapturingAssistant())
+
+    test_repo.save_user(
+        User(
+            username="admin",
+            password_hash="unused",
+            role="admin",
+        )
+    )
+
+    test_repo.save_employee(
+        Employee(
+            employee_id="E001",
+            name="山田太郎",
+            employment_type="正社員",
+            hire_date=date(2025, 1, 1),
+            pay_type="月給",
+            monthly_salary=Decimal("200000"),
+        )
+    )
+
+    test_repo.save_work_record(
+        WorkRecord(
+            employee_id="E001",
+            work_date=date(2026, 9, 1),
+            start_minute=9 * 60,
+            end_minute=18 * 60,
+            break_total_minutes=60,
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "admin"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.post(
+        "/ai/chat",
+        data={
+            "message": "山田太郎の9月の勤怠を教えて",
+            "year_month": "2026-09",
+        },
+    )
+
+    assert response.status_code == 200
+
+    prompt = captured["message"]
+    assert "対象従業員: 山田太郎 (E001)" in prompt
+    assert "勤怠記録件数: 1" in prompt
+    assert "出勤日数: 1" in prompt
