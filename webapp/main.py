@@ -291,6 +291,13 @@ def ai_chat(
                 month_end,
             )
 
+            warning_details = " / ".join(
+                payroll_status["warnings"]
+            ) or "なし"
+            blocking_details = " / ".join(
+                payroll_status["blocking_issues"]
+            ) or "なし"
+
             employee_context = (
                 "\n"
                 f"対象従業員: {attendance['employee_name']} "
@@ -302,8 +309,10 @@ def ai_chat(
                 f"給与確定済み: "
                 f"{'はい' if payroll_status['finalized'] else 'いいえ'}\n"
                 f"給与warning件数: {payroll_status['warning_count']}\n"
+                f"給与warning内容: {warning_details}\n"
                 f"給与blocking issue件数: "
                 f"{payroll_status['blocking_issue_count']}\n"
+                f"給与blocking issue内容: {blocking_details}\n"
                 "給与warningは給与計算結果の警告であり、勤怠警告とは限りません。\n"
                 f"有給残日数: {leave_balance.remaining_days}\n"
                 f"有給申請中日数: {leave_balance.pending_days}\n"

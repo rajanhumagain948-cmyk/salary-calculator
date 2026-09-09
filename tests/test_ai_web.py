@@ -430,6 +430,8 @@ def test_ai_chat_adds_referenced_employee_payroll_status(tmp_path, monkeypatch):
     assert "給与確定済み: いいえ" in prompt
     assert "給与warning件数: 1" in prompt
     assert "給与blocking issue件数: 1" in prompt
+    assert "給与warning内容: 確認してください" in prompt
+    assert "給与blocking issue内容: 勤怠未確認" in prompt
     assert "給与warningは給与計算結果の警告であり、勤怠警告とは限りません。" in prompt
 
 
