@@ -31,3 +31,35 @@ def build_ai_monthly_summary(
             and item.leave_date.strftime("%Y-%m") == year_month
         ),
     }
+
+
+def find_referenced_employee(
+    message: str,
+    employees: Iterable[Any],
+):
+    employees = list(employees)
+
+    id_matches = [
+        employee
+        for employee in employees
+        if employee.employee_id
+        and employee.employee_id in message
+    ]
+
+    if len(id_matches) == 1:
+        return id_matches[0]
+
+    if len(id_matches) > 1:
+        return None
+
+    name_matches = [
+        employee
+        for employee in employees
+        if employee.name
+        and employee.name in message
+    ]
+
+    if len(name_matches) == 1:
+        return name_matches[0]
+
+    return None

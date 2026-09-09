@@ -52,3 +52,51 @@ def test_build_ai_monthly_summary_counts_company_status():
         "blocked_payroll_count": 1,
         "pending_leave_count": 1,
     }
+
+
+def test_find_referenced_employee_by_id_or_name():
+    from datetime import date
+    from models.employee import Employee
+
+    employees = [
+        Employee(
+            employee_id="E001",
+            name="山田太郎",
+            employment_type="正社員",
+            hire_date=date(2025, 1, 1),
+            pay_type="月給",
+        ),
+        Employee(
+            employee_id="E002",
+            name="佐藤花子",
+            employment_type="正社員",
+            hire_date=date(2025, 1, 1),
+            pay_type="月給",
+        ),
+    ]
+
+    from services.ai_context_service import find_referenced_employee
+
+    by_id = find_referenced_employee(
+        "E002の9月の状況を教えて",
+        employees,
+    )
+    assert by_id is not None
+    assert by_id.employee_id == "E002"
+
+    by_name = find_referenced_employee(
+        "山田太郎さんの勤怠を確認して",
+        employees,
+    )
+    assert by_name is not None
+    assert by_name.employee_id == "E001"
+
+    assert find_referenced_employee(
+        "今月の会社全体の状況を教えて",
+        employees,
+    ) is None
+
+    assert find_referenced_employee(
+        "E001とE002を比較して",
+        employees,
+    ) is None
