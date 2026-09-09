@@ -109,3 +109,27 @@ def build_employee_payroll_summary(
         "warning_count": len(payroll.warnings),
         "blocking_issue_count": len(payroll.blocking_issues),
     }
+
+
+def find_referenced_employee_candidates(
+    message: str,
+    employees: Iterable[Any],
+) -> list[Any]:
+    employees = list(employees)
+
+    id_matches = [
+        employee
+        for employee in employees
+        if employee.employee_id
+        and employee.employee_id in message
+    ]
+
+    if id_matches:
+        return id_matches
+
+    return [
+        employee
+        for employee in employees
+        if employee.name
+        and employee.name in message
+    ]

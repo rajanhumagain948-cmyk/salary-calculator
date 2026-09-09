@@ -176,3 +176,43 @@ def test_build_employee_payroll_summary():
 
     assert missing["calculated"] is False
     assert missing["finalized"] is False
+
+
+def test_find_referenced_employee_candidates_handles_duplicate_names():
+    from datetime import date
+    from models.employee import Employee
+    from services.ai_context_service import find_referenced_employee_candidates
+
+    employees = [
+        Employee(
+            employee_id="W250651",
+            name="ホムガイ",
+            employment_type="正社員",
+            hire_date=date(2026, 6, 1),
+            pay_type="月給",
+        ),
+        Employee(
+            employee_id="W250652",
+            name="ホムガイ",
+            employment_type="正社員",
+            hire_date=date(2026, 6, 1),
+            pay_type="月給",
+        ),
+    ]
+
+    duplicate_name = find_referenced_employee_candidates(
+        "ホムガイの状況を教えて",
+        employees,
+    )
+    assert [item.employee_id for item in duplicate_name] == [
+        "W250651",
+        "W250652",
+    ]
+
+    explicit_id = find_referenced_employee_candidates(
+        "W250651の状況を教えて",
+        employees,
+    )
+    assert [item.employee_id for item in explicit_id] == [
+        "W250651",
+    ]
