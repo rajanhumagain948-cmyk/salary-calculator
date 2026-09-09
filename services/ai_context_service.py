@@ -83,3 +83,29 @@ def build_employee_attendance_summary(
         "record_count": len(records),
         "attendance_days": attendance_days(records),
     }
+
+
+def build_employee_payroll_summary(
+    *,
+    employee_id: str,
+    year_month: str,
+    payroll: Any | None,
+) -> dict[str, int | str | bool]:
+    if payroll is None:
+        return {
+            "employee_id": employee_id,
+            "year_month": year_month,
+            "calculated": False,
+            "finalized": False,
+            "warning_count": 0,
+            "blocking_issue_count": 0,
+        }
+
+    return {
+        "employee_id": employee_id,
+        "year_month": year_month,
+        "calculated": True,
+        "finalized": payroll.finalized,
+        "warning_count": len(payroll.warnings),
+        "blocking_issue_count": len(payroll.blocking_issues),
+    }

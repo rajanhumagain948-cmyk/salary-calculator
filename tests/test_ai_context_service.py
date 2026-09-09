@@ -138,3 +138,41 @@ def test_build_employee_attendance_summary():
         "record_count": 2,
         "attendance_days": 2,
     }
+
+
+def test_build_employee_payroll_summary():
+    from models.payroll import PayrollResult, TimeClassification
+    from services.ai_context_service import build_employee_payroll_summary
+
+    payroll = PayrollResult(
+        employee_id="E001",
+        year_month="2026-09",
+        classification=TimeClassification(),
+        warnings=["確認してください"],
+        blocking_issues=["勤怠未確認"],
+        finalized=False,
+    )
+
+    summary = build_employee_payroll_summary(
+        employee_id="E001",
+        year_month="2026-09",
+        payroll=payroll,
+    )
+
+    assert summary == {
+        "employee_id": "E001",
+        "year_month": "2026-09",
+        "calculated": True,
+        "finalized": False,
+        "warning_count": 1,
+        "blocking_issue_count": 1,
+    }
+
+    missing = build_employee_payroll_summary(
+        employee_id="E001",
+        year_month="2026-10",
+        payroll=None,
+    )
+
+    assert missing["calculated"] is False
+    assert missing["finalized"] is False
