@@ -15,7 +15,7 @@ const adminNav = [
   { href: "/shift-table", label: "シフト管理", icon: "▦", enabled: true },
   { href: "/payroll", label: "給与計算", icon: "¥", enabled: true },
   { href: "/leave", label: "有給管理", icon: "◇", enabled: true },
-  { href: "/ai", label: "AIアシスタント", icon: "✦", enabled: false },
+  { href: "/ai", label: "AIアシスタント", icon: "✦", enabled: true },
   { href: "/settings", label: "設定", icon: "⚙", enabled: true },
 ];
 
