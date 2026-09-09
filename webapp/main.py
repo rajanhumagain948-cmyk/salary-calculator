@@ -1,6 +1,7 @@
 import json
 import unicodedata
 import tempfile
+from urllib.error import URLError
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Form, HTTPException, Response, Request
@@ -222,8 +223,16 @@ def ai_chat(
             f"質問: {message}"
         )
 
+    try:
+        answer = ai_assistant.chat(prompt)
+    except (ConnectionError, URLError) as error:
+        raise HTTPException(
+            status_code=503,
+            detail="AIアシスタントに接続できません。",
+        ) from error
+
     return {
-        "answer": ai_assistant.chat(prompt),
+        "answer": answer,
     }
 
 

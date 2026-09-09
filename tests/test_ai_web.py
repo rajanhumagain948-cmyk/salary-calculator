@@ -171,3 +171,37 @@ def test_ai_chat_rejects_invalid_year_month(tmp_path, monkeypatch):
 
     assert response.status_code == 400
     assert response.json()["detail"] == "year_month must be YYYY-MM"
+
+
+def test_ai_chat_returns_503_when_assistant_is_unavailable(
+    tmp_path,
+    monkeypatch,
+):
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    class UnavailableAssistant:
+        def chat(self, message: str) -> str:
+            raise ConnectionError("Ollama is unavailable")
+
+    monkeypatch.setattr(main, "ai_assistant", UnavailableAssistant())
+
+    test_repo.save_user(
+        User(
+            username="admin",
+            password_hash="unused",
+            role="admin",
+        )
+    )
+
+    client = TestClient(main.app, raise_server_exceptions=False)
+    token = main.serializer.dumps({"username": "admin"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.post(
+        "/ai/chat",
+        data={"message": "給与状況を教えて"},
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "AIアシスタントに接続できません。"
