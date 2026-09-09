@@ -142,3 +142,32 @@ def test_ai_chat_receives_monthly_company_summary(tmp_path, monkeypatch):
     assert "給与確定済み件数: 1" in prompt
     assert "有給申請中件数: 1" in prompt
     assert "9月の状況を教えて" in prompt
+
+
+def test_ai_chat_rejects_invalid_year_month(tmp_path, monkeypatch):
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+    monkeypatch.setattr(main, "ai_assistant", FakeAssistant())
+
+    test_repo.save_user(
+        User(
+            username="admin",
+            password_hash="unused",
+            role="admin",
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "admin"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.post(
+        "/ai/chat",
+        data={
+            "message": "給与状況を教えて",
+            "year_month": "abc",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "year_month must be YYYY-MM"

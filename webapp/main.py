@@ -185,6 +185,24 @@ def ai_chat(
 
     if year_month:
         year_month = normalize_input(year_month)
+
+        try:
+            parsed_year_month = datetime.strptime(
+                year_month,
+                "%Y-%m",
+            )
+        except ValueError as error:
+            raise HTTPException(
+                status_code=400,
+                detail="year_month must be YYYY-MM",
+            ) from error
+
+        if parsed_year_month.strftime("%Y-%m") != year_month:
+            raise HTTPException(
+                status_code=400,
+                detail="year_month must be YYYY-MM",
+            )
+
         summary = build_ai_monthly_summary(
             year_month=year_month,
             employee_count=len(repo.employees()),
