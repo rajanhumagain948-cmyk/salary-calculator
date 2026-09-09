@@ -515,3 +515,59 @@ def test_ai_chat_adds_referenced_employee_leave_balance(tmp_path, monkeypatch):
     assert "有給残日数: 10" in prompt
     assert "有給申請中日数: 1" in prompt
     assert "有給申請可能日数: 9" in prompt
+
+
+def test_ai_chat_asks_for_employee_id_when_name_is_ambiguous(
+    tmp_path,
+    monkeypatch,
+):
+    from datetime import date
+    from decimal import Decimal
+    from models.employee import Employee
+
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    class ShouldNotCallAssistant:
+        def chat(self, message: str) -> str:
+            raise AssertionError("AI must not be called for ambiguous employee")
+
+    monkeypatch.setattr(main, "ai_assistant", ShouldNotCallAssistant())
+
+    test_repo.save_user(
+        User(
+            username="admin",
+            password_hash="unused",
+            role="admin",
+        )
+    )
+
+    for employee_id in ("W250651", "W250652"):
+        test_repo.save_employee(
+            Employee(
+                employee_id=employee_id,
+                name="ホムガイ",
+                employment_type="正社員",
+                hire_date=date(2026, 6, 1),
+                pay_type="月給",
+                monthly_salary=Decimal("200000"),
+            )
+        )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "admin"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.post(
+        "/ai/chat",
+        data={
+            "message": "ホムガイの状況を教えて",
+            "year_month": "2026-09",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["answer"] == (
+        "「ホムガイ」に一致する従業員が複数います。"
+        "社員番号 W250651 または W250652 を指定してください。"
+    )

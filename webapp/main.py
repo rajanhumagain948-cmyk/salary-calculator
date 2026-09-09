@@ -48,6 +48,7 @@ from services.ai_context_service import (
     build_employee_attendance_summary,
     build_employee_payroll_summary,
     find_referenced_employee,
+    find_referenced_employee_candidates,
 )
 
 @asynccontextmanager
@@ -221,6 +222,28 @@ def ai_chat(
             payrolls=payrolls,
             leave_requests=repo.leave_requests(),
         )
+
+        employee_candidates = find_referenced_employee_candidates(
+            message,
+            employees,
+        )
+
+        if len(employee_candidates) > 1:
+            names = {item.name for item in employee_candidates}
+
+            if len(names) == 1:
+                employee_name = employee_candidates[0].name
+                employee_ids = " または ".join(
+                    item.employee_id
+                    for item in employee_candidates
+                )
+
+                return {
+                    "answer": (
+                        f"「{employee_name}」に一致する従業員が複数います。"
+                        f"社員番号 {employee_ids} を指定してください。"
+                    )
+                }
 
         referenced_employee = find_referenced_employee(
             message,
