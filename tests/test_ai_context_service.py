@@ -30,6 +30,11 @@ def test_build_ai_monthly_summary_counts_company_status():
             leave_date=__import__("datetime").date(2026, 9, 20),
             status="承認",
         ),
+        LeaveRequest(
+            employee_id="E3",
+            leave_date=__import__("datetime").date(2026, 10, 1),
+            status="申請中",
+        ),
     ]
 
     summary = build_ai_monthly_summary(

@@ -41,6 +41,7 @@ from services.leave_service import (
 )
 from services.payslip_service import export_pdf
 from services.ai_service import OllamaAssistant
+from services.ai_context_service import build_ai_monthly_summary
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -166,6 +167,7 @@ def logout():
 def ai_chat(
     request: Request,
     message: str = Form(...),
+    year_month: str | None = Form(None),
 ):
     user = require_user(request)
 
@@ -179,8 +181,31 @@ def ai_chat(
             detail="message is required",
         )
 
+    prompt = message
+
+    if year_month:
+        year_month = normalize_input(year_month)
+        summary = build_ai_monthly_summary(
+            year_month=year_month,
+            employee_count=len(repo.employees()),
+            payrolls=repo.payroll_results(year_month),
+            leave_requests=repo.leave_requests(),
+        )
+
+        prompt = (
+            "以下は給与管理システムの読み取り専用月次サマリーです。\n"
+            f"対象月: {summary['year_month']}\n"
+            f"従業員数: {summary['employee_count']}\n"
+            f"給与計算済み件数: {summary['calculated_payroll_count']}\n"
+            f"給与確定済み件数: {summary['finalized_payroll_count']}\n"
+            f"給与確定不可件数: {summary['blocked_payroll_count']}\n"
+            f"有給申請中件数: {summary['pending_leave_count']}\n"
+            "\n"
+            f"質問: {message}"
+        )
+
     return {
-        "answer": ai_assistant.chat(message),
+        "answer": ai_assistant.chat(prompt),
     }
 
 

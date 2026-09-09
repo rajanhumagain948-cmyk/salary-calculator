@@ -63,3 +63,82 @@ def test_employee_cannot_chat_with_ai_assistant(tmp_path, monkeypatch):
     )
 
     assert response.status_code == 403
+
+
+def test_ai_chat_receives_monthly_company_summary(tmp_path, monkeypatch):
+    from datetime import date
+    from decimal import Decimal
+
+    from models.employee import Employee
+    from models.leave_request import LeaveRequest
+    from models.payroll import PayrollResult, TimeClassification
+
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    captured = {}
+
+    class CapturingAssistant:
+        def chat(self, message: str) -> str:
+            captured["message"] = message
+            return "月次状況を回答しました。"
+
+    monkeypatch.setattr(main, "ai_assistant", CapturingAssistant())
+
+    test_repo.save_user(
+        User(
+            username="admin",
+            password_hash="unused",
+            role="admin",
+        )
+    )
+
+    test_repo.save_employee(
+        Employee(
+            employee_id="E1",
+            name="テスト社員",
+            employment_type="正社員",
+            hire_date=date(2025, 1, 1),
+            pay_type="月給",
+            monthly_salary=Decimal("200000"),
+        )
+    )
+
+    test_repo.save_payroll_result(
+        PayrollResult(
+            employee_id="E1",
+            year_month="2026-09",
+            classification=TimeClassification(),
+            finalized=True,
+        )
+    )
+
+    test_repo.save_leave_request(
+        LeaveRequest(
+            employee_id="E1",
+            leave_date=date(2026, 9, 15),
+            status="申請中",
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "admin"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.post(
+        "/ai/chat",
+        data={
+            "message": "9月の状況を教えて",
+            "year_month": "2026-09",
+        },
+    )
+
+    assert response.status_code == 200
+
+    prompt = captured["message"]
+    assert "2026-09" in prompt
+    assert "従業員数: 1" in prompt
+    assert "給与計算済み件数: 1" in prompt
+    assert "給与確定済み件数: 1" in prompt
+    assert "有給申請中件数: 1" in prompt
+    assert "9月の状況を教えて" in prompt

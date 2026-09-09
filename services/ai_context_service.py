@@ -25,6 +25,9 @@ def build_ai_monthly_summary(
             1 for item in payrolls if item.blocking_issues
         ),
         "pending_leave_count": sum(
-            1 for item in leave_requests if item.status == "申請中"
+            1
+            for item in leave_requests
+            if item.status == "申請中"
+            and item.leave_date.strftime("%Y-%m") == year_month
         ),
     }
