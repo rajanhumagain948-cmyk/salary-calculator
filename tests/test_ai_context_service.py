@@ -166,6 +166,8 @@ def test_build_employee_payroll_summary():
         "finalized": False,
         "warning_count": 1,
         "blocking_issue_count": 1,
+        "warnings": ["確認してください"],
+        "blocking_issues": ["勤怠未確認"],
     }
 
     missing = build_employee_payroll_summary(
