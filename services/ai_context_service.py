@@ -63,3 +63,23 @@ def find_referenced_employee(
         return name_matches[0]
 
     return None
+
+
+def build_employee_attendance_summary(
+    *,
+    employee_id: str,
+    employee_name: str,
+    year_month: str,
+    records: Iterable[Any],
+) -> dict[str, int | str]:
+    from services.attendance_service import attendance_days
+
+    records = list(records)
+
+    return {
+        "employee_id": employee_id,
+        "employee_name": employee_name,
+        "year_month": year_month,
+        "record_count": len(records),
+        "attendance_days": attendance_days(records),
+    }

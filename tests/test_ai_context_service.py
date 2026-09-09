@@ -100,3 +100,41 @@ def test_find_referenced_employee_by_id_or_name():
         "E001とE002を比較して",
         employees,
     ) is None
+
+
+def test_build_employee_attendance_summary():
+    from datetime import date
+    from models.work_record import WorkRecord
+    from services.ai_context_service import build_employee_attendance_summary
+
+    records = [
+        WorkRecord(
+            employee_id="E001",
+            work_date=date(2026, 9, 1),
+            start_minute=9 * 60,
+            end_minute=18 * 60,
+            break_total_minutes=60,
+        ),
+        WorkRecord(
+            employee_id="E001",
+            work_date=date(2026, 9, 2),
+            start_minute=9 * 60,
+            end_minute=18 * 60,
+            break_total_minutes=60,
+        ),
+    ]
+
+    summary = build_employee_attendance_summary(
+        employee_id="E001",
+        employee_name="山田太郎",
+        year_month="2026-09",
+        records=records,
+    )
+
+    assert summary == {
+        "employee_id": "E001",
+        "employee_name": "山田太郎",
+        "year_month": "2026-09",
+        "record_count": 2,
+        "attendance_days": 2,
+    }
