@@ -433,6 +433,8 @@ def test_ai_chat_adds_referenced_employee_payroll_status(tmp_path, monkeypatch):
     assert "給与warning内容: 確認してください" in prompt
     assert "給与blocking issue内容: 勤怠未確認" in prompt
     assert "給与warningは給与計算結果の警告であり、勤怠警告とは限りません。" in prompt
+    assert "提供されていない事実・従業員・制度を推測で作らないでください。" in prompt
+    assert "確定済み給与の再計算・再確定を提案しないでください。" in prompt
 
 
 def test_ai_chat_adds_referenced_employee_leave_balance(tmp_path, monkeypatch):
