@@ -175,6 +175,24 @@ def logout():
     return resp
 
 
+@app.get("/ai/status")
+def ai_status(request: Request):
+    user = require_user(request)
+
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="admin only")
+
+    base_url = ai_assistant.base_url
+
+    return {
+        "model": ai_assistant.model,
+        "local": (
+            base_url.startswith("http://localhost:")
+            or base_url.startswith("http://127.0.0.1:")
+        ),
+    }
+
+
 @app.post("/ai/chat")
 def ai_chat(
     request: Request,

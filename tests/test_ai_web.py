@@ -859,3 +859,30 @@ def test_ai_chat_records_safe_audit_log(tmp_path, monkeypatch):
     serialized = " ".join(ai_logs[0])
     assert "秘密の質問" not in serialized
     assert "回答です" not in serialized
+
+
+def test_admin_can_view_ai_status(tmp_path, monkeypatch):
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    class StatusAssistant:
+        model = "qwen3:8b"
+        base_url = "http://localhost:11434"
+
+    monkeypatch.setattr(main, "ai_assistant", StatusAssistant())
+
+    test_repo.save_user(
+        User(username="admin", password_hash="unused", role="admin")
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "admin"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.get("/ai/status")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "model": "qwen3:8b",
+        "local": True,
+    }
