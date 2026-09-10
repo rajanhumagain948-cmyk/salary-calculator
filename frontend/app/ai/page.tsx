@@ -394,37 +394,109 @@ export default function AiPage() {
             </p>
           )}
 
-          {messages.length > 0 && (
+          {(messages.length > 0 || sending) && (
             <div
               style={{
                 display: "grid",
-                gap: 12,
-                marginTop: 24,
+                gap: 14,
+                marginTop: 26,
+                paddingTop: 22,
+                borderTop: "1px solid rgba(148,180,216,0.12)",
               }}
             >
-              {messages.map((item, index) => (
+              {messages.map((item, index) => {
+                const isUser = item.role === "user";
+
+                return (
+                  <div
+                    key={`${item.role}-${index}`}
+                    style={{
+                      display: "flex",
+                      justifyContent: isUser ? "flex-end" : "flex-start",
+                      gap: 10,
+                    }}
+                  >
+                    {!isUser && (
+                      <div
+                        style={{
+                          display: "grid",
+                          placeItems: "center",
+                          width: 34,
+                          height: 34,
+                          flex: "0 0 34px",
+                          borderRadius: 11,
+                          background:
+                            "linear-gradient(135deg, #818cf8, #8b5cf6)",
+                          color: "white",
+                          boxShadow: "0 0 20px rgba(139,92,246,0.22)",
+                        }}
+                      >
+                        ✦
+                      </div>
+                    )}
+
+                    <div
+                      style={{
+                        maxWidth: "82%",
+                        padding: "12px 15px",
+                        border: isUser
+                          ? "1px solid rgba(129,140,248,0.22)"
+                          : "1px solid rgba(148,180,216,0.12)",
+                        borderRadius: isUser
+                          ? "16px 16px 4px 16px"
+                          : "4px 16px 16px 16px",
+                        background: isUser
+                          ? "linear-gradient(135deg, rgba(79,70,229,0.25), rgba(99,102,241,0.15))"
+                          : "rgba(7,16,30,0.52)",
+                        whiteSpace: "pre-wrap",
+                        lineHeight: 1.75,
+                        color: "#dce6f3",
+                      }}
+                    >
+                      <div
+                        style={{
+                          marginBottom: 5,
+                          color: isUser ? "#a5b4fc" : "#c4b5fd",
+                          fontSize: 11,
+                          fontWeight: 800,
+                          letterSpacing: "0.08em",
+                        }}
+                      >
+                        {isUser ? "YOU" : "LOCAL AI"}
+                      </div>
+                      {item.content}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {sending && (
                 <div
-                  key={`${item.role}-${index}`}
                   style={{
-                    justifySelf:
-                      item.role === "user" ? "end" : "start",
-                    maxWidth: "85%",
-                    padding: "12px 16px",
-                    borderRadius: 14,
-                    background:
-                      item.role === "user"
-                        ? "rgba(100,116,255,0.24)"
-                        : "rgba(0,0,0,0.18)",
-                    whiteSpace: "pre-wrap",
-                    lineHeight: 1.7,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    color: "#9fb1c7",
+                    fontSize: 13,
                   }}
                 >
-                  <strong>
-                    {item.role === "user" ? "あなた" : "AI"}
-                  </strong>
-                  <div style={{ marginTop: 6 }}>{item.content}</div>
+                  <div
+                    style={{
+                      display: "grid",
+                      placeItems: "center",
+                      width: 34,
+                      height: 34,
+                      borderRadius: 11,
+                      background:
+                        "linear-gradient(135deg, #818cf8, #8b5cf6)",
+                      color: "white",
+                    }}
+                  >
+                    ✦
+                  </div>
+                  <span>AIが給与データを確認しています…</span>
                 </div>
-              ))}
+              )}
             </div>
           )}
         </section>
