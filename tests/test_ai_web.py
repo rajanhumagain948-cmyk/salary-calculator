@@ -576,3 +576,68 @@ def test_ai_chat_asks_for_employee_id_when_name_is_ambiguous(
         "「ホムガイ」に一致する従業員が複数います。"
         "社員番号 W250651 または W250652 を指定してください。"
     )
+
+
+def test_ai_chat_adds_payroll_review_people(tmp_path, monkeypatch):
+    from datetime import date
+    from decimal import Decimal
+
+    from models.employee import Employee
+    from models.payroll import PayrollResult, TimeClassification
+
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    captured = {}
+
+    class CapturingAssistant:
+        def chat(self, message: str) -> str:
+            captured["message"] = message
+            return "要確認者を回答しました。"
+
+    monkeypatch.setattr(main, "ai_assistant", CapturingAssistant())
+
+    test_repo.save_user(
+        User(username="admin", password_hash="unused", role="admin")
+    )
+
+    test_repo.save_employee(
+        Employee(
+            employee_id="E001",
+            name="山田太郎",
+            employment_type="正社員",
+            hire_date=date(2025, 1, 1),
+            pay_type="月給",
+            monthly_salary=Decimal("200000"),
+        )
+    )
+
+    test_repo.save_payroll_result(
+        PayrollResult(
+            employee_id="E001",
+            year_month="2026-09",
+            classification=TimeClassification(),
+            warnings=["標準報酬月額を確認してください"],
+            blocking_issues=["勤怠未確認"],
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "admin"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.post(
+        "/ai/chat",
+        data={
+            "message": "今月誰を確認すればいい？",
+            "year_month": "2026-09",
+        },
+    )
+
+    assert response.status_code == 200
+
+    prompt = captured["message"]
+    assert "給与要確認従業員:" in prompt
+    assert "E001 / 山田太郎" in prompt
+    assert "warning: 標準報酬月額を確認してください" in prompt
+    assert "blocking issue: 勤怠未確認" in prompt
