@@ -728,3 +728,71 @@ def test_ai_chat_adds_pending_leave_review_people(tmp_path, monkeypatch):
     assert "E001 / 山田太郎" in prompt
     assert "2026-09-15" in prompt
     assert "全日" in prompt
+
+
+def test_ai_chat_keeps_employee_context_from_history(tmp_path, monkeypatch):
+    import json
+    from datetime import date
+    from decimal import Decimal
+
+    from models.employee import Employee
+    from models.employment import EmploymentTerms
+
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    captured = {}
+
+    class CapturingAssistant:
+        def chat_messages(self, messages):
+            captured["messages"] = messages
+            return "続きの回答です。"
+
+    monkeypatch.setattr(main, "ai_assistant", CapturingAssistant())
+
+    test_repo.save_user(
+        User(username="admin", password_hash="unused", role="admin")
+    )
+
+    test_repo.save_employee(
+        Employee(
+            employee_id="W250651",
+            name="ホムガイ",
+            employment_type="正社員",
+            hire_date=date(2026, 6, 1),
+            pay_type="月給",
+            monthly_salary=Decimal("200000"),
+            weekly_days=5,
+            weekly_hours=Decimal("40"),
+        )
+    )
+    test_repo.save_terms(
+        EmploymentTerms(
+            "W250651",
+            standard_daily_minutes=480,
+        )
+    )
+
+    history = [
+        {"role": "user", "content": "W250651の給与を教えて"},
+        {"role": "assistant", "content": "給与情報です。"},
+    ]
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "admin"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.post(
+        "/ai/chat",
+        data={
+            "message": "じゃあ有給は？",
+            "year_month": "2026-09",
+            "history": json.dumps(history, ensure_ascii=False),
+        },
+    )
+
+    assert response.status_code == 200
+
+    current_prompt = captured["messages"][-1]["content"]
+    assert "対象従業員: ホムガイ (W250651)" in current_prompt
+    assert "有給残日数:" in current_prompt
