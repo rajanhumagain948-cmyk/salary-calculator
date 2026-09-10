@@ -42,6 +42,7 @@ from services.leave_service import (
     next_leave_grant,
 )
 from services.payslip_service import export_pdf
+from services.time_service import format_minutes
 from services.ai_service import OllamaAssistant
 from services.ai_context_service import (
     build_ai_monthly_summary,
@@ -350,8 +351,21 @@ def ai_chat(
                     f"控除合計: {payroll_status['total_deductions']}円\n"
                     f"手取り: {payroll_status['net_pay']}円\n"
                 )
+                attendance_time_context = (
+                    "所定内時間: "
+                    f"{format_minutes(payroll_status['regular_minutes'])}\n"
+                    "時間外: "
+                    f"{format_minutes(payroll_status['overtime_minutes'])}\n"
+                    "深夜: "
+                    f"{format_minutes(payroll_status['night_minutes'])}\n"
+                    "休日: "
+                    f"{format_minutes(payroll_status['holiday_minutes'])}\n"
+                    "月60時間超: "
+                    f"{format_minutes(payroll_status['overtime_over_60_minutes'])}\n"
+                )
             else:
                 payroll_amount_context = ""
+                attendance_time_context = ""
 
             employee_context = (
                 "\n"
@@ -369,6 +383,7 @@ def ai_chat(
                 f"{payroll_status['blocking_issue_count']}\n"
                 f"給与blocking issue内容: {blocking_details}\n"
                 f"{payroll_amount_context}"
+                f"{attendance_time_context}"
                 "給与warningは給与計算結果の警告であり、勤怠警告とは限りません。\n"
                 f"有給残日数: {leave_balance.remaining_days}\n"
                 f"有給申請中日数: {leave_balance.pending_days}\n"

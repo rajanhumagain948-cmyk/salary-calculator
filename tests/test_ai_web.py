@@ -404,7 +404,13 @@ def test_ai_chat_adds_referenced_employee_payroll_status(tmp_path, monkeypatch):
         PayrollResult(
             employee_id="E001",
             year_month="2026-09",
-            classification=TimeClassification(),
+            classification=TimeClassification(
+                regular_minutes=9600,
+                overtime_minutes=300,
+                night_minutes=60,
+                holiday_minutes=420,
+                overtime_over_60_minutes=30,
+            ),
             payments={"基本給": Decimal("200000")},
             deductions={"所得税": Decimal("3270")},
             warnings=["確認してください"],
@@ -437,6 +443,11 @@ def test_ai_chat_adds_referenced_employee_payroll_status(tmp_path, monkeypatch):
     assert "総支給: 200000円" in prompt
     assert "控除合計: 3270円" in prompt
     assert "手取り: 196730円" in prompt
+    assert "所定内時間: 160時間00分" in prompt
+    assert "時間外: 5時間00分" in prompt
+    assert "深夜: 1時間00分" in prompt
+    assert "休日: 7時間00分" in prompt
+    assert "月60時間超: 0時間30分" in prompt
     assert "給与warningは給与計算結果の警告であり、勤怠警告とは限りません。" in prompt
     assert "提供されていない事実・従業員・制度を推測で作らないでください。" in prompt
     assert "確定済み給与の再計算・再確定を提案しないでください。" in prompt
