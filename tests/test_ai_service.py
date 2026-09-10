@@ -62,3 +62,13 @@ def test_ollama_assistant_can_send_conversation_messages():
         {"role": "assistant", "content": "給与確定は3件です。"},
         {"role": "user", "content": "その中で問題は？"},
     ]
+
+
+def test_ollama_assistant_can_load_configuration_from_environment(monkeypatch):
+    monkeypatch.setenv("OLLAMA_MODEL", "llama3:latest")
+    monkeypatch.setenv("OLLAMA_BASE_URL", "http://127.0.0.1:11435/")
+
+    assistant = OllamaAssistant.from_env()
+
+    assert assistant.model == "llama3:latest"
+    assert assistant.base_url == "http://127.0.0.1:11435"

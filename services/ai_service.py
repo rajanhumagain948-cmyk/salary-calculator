@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import Callable
 from typing import Any
 from urllib.request import Request, urlopen
@@ -32,6 +33,16 @@ class OllamaAssistant:
         self.model = model
         self.base_url = base_url.rstrip("/")
         self.post_json = post_json
+
+    @classmethod
+    def from_env(cls) -> "OllamaAssistant":
+        return cls(
+            model=os.getenv("OLLAMA_MODEL", "qwen3:8b"),
+            base_url=os.getenv(
+                "OLLAMA_BASE_URL",
+                "http://localhost:11434",
+            ),
+        )
 
     def chat(self, message: str) -> str:
         return self.chat_messages(
