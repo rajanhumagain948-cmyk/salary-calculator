@@ -206,6 +206,15 @@ def test_ai_chat_returns_503_when_assistant_is_unavailable(
     assert response.status_code == 503
     assert response.json()["detail"] == "AIアシスタントに接続できません。"
 
+    ai_logs = [
+        row
+        for row in test_repo.recent_audit()
+        if row[1] == "AIアシスタント利用"
+    ]
+    assert len(ai_logs) == 1
+    assert ai_logs[0][2] == "admin"
+    assert ai_logs[0][3] == "対象月=未指定 結果=失敗"
+
 
 def test_ai_chat_passes_valid_conversation_history(tmp_path, monkeypatch):
     import json
