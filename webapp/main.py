@@ -350,6 +350,14 @@ def ai_chat(
         employee_context = ""
 
         if referenced_employee is not None:
+            sources.extend(
+                [
+                    "対象従業員の勤怠",
+                    "対象従業員の給与結果",
+                    "対象従業員の有給残数",
+                ]
+            )
+
             attendance = build_employee_attendance_summary(
                 employee_id=referenced_employee.employee_id,
                 employee_name=referenced_employee.name,

@@ -370,6 +370,14 @@ def test_ai_chat_adds_referenced_employee_attendance(tmp_path, monkeypatch):
     )
 
     assert response.status_code == 200
+    assert response.json()["sources"] == [
+        "月次給与状況",
+        "給与要確認",
+        "有給承認待ち",
+        "対象従業員の勤怠",
+        "対象従業員の給与結果",
+        "対象従業員の有給残数",
+    ]
 
     prompt = captured["message"]
     assert "対象従業員: 山田太郎 (E001)" in prompt
