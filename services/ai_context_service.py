@@ -137,3 +137,30 @@ def find_referenced_employee_candidates(
         if employee.name
         and employee.name in message
     ]
+
+
+def build_payroll_review_items(
+    payrolls: Iterable[Any],
+    *,
+    employee_names: dict[str, str],
+) -> list[dict[str, Any]]:
+    items = []
+
+    for payroll in payrolls:
+        if not payroll.warnings and not payroll.blocking_issues:
+            continue
+
+        items.append(
+            {
+                "employee_id": payroll.employee_id,
+                "employee_name": employee_names.get(
+                    payroll.employee_id,
+                    payroll.employee_id,
+                ),
+                "finalized": payroll.finalized,
+                "warnings": list(payroll.warnings),
+                "blocking_issues": list(payroll.blocking_issues),
+            }
+        )
+
+    return items

@@ -218,3 +218,59 @@ def test_find_referenced_employee_candidates_handles_duplicate_names():
     assert [item.employee_id for item in explicit_id] == [
         "W250651",
     ]
+
+
+def test_build_payroll_review_items_only_includes_people_needing_review():
+    from models.payroll import PayrollResult, TimeClassification
+    from services.ai_context_service import build_payroll_review_items
+
+    payrolls = [
+        PayrollResult(
+            employee_id="E001",
+            year_month="2026-09",
+            classification=TimeClassification(),
+            warnings=["標準報酬月額を確認してください"],
+            finalized=False,
+        ),
+        PayrollResult(
+            employee_id="E002",
+            year_month="2026-09",
+            classification=TimeClassification(),
+            blocking_issues=["勤怠を確認してください"],
+            finalized=False,
+        ),
+        PayrollResult(
+            employee_id="E003",
+            year_month="2026-09",
+            classification=TimeClassification(),
+            finalized=True,
+        ),
+    ]
+
+    employee_names = {
+        "E001": "山田太郎",
+        "E002": "佐藤花子",
+        "E003": "鈴木一郎",
+    }
+
+    items = build_payroll_review_items(
+        payrolls,
+        employee_names=employee_names,
+    )
+
+    assert items == [
+        {
+            "employee_id": "E001",
+            "employee_name": "山田太郎",
+            "finalized": False,
+            "warnings": ["標準報酬月額を確認してください"],
+            "blocking_issues": [],
+        },
+        {
+            "employee_id": "E002",
+            "employee_name": "佐藤花子",
+            "finalized": False,
+            "warnings": [],
+            "blocking_issues": ["勤怠を確認してください"],
+        },
+    ]
