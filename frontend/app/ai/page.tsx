@@ -245,40 +245,104 @@ export default function AiPage() {
               />
             </label>
 
-            <div style={{ marginBottom: 16 }}>
+            <div style={{ marginBottom: 22 }}>
               <div
                 style={{
-                  marginBottom: 8,
-                  color: "#8fa6bf",
+                  marginBottom: 10,
+                  color: "#9fb1c7",
                   fontSize: 13,
+                  fontWeight: 700,
                 }}
               >
-                質問例
+                ✦ AIに聞いてみる
               </div>
+
               <div
                 style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: 8,
+                  display: "grid",
+                  gridTemplateColumns:
+                    "repeat(auto-fit, minmax(190px, 1fr))",
+                  gap: 10,
                 }}
               >
                 {[
-                  "今月の給与処理状況をまとめて",
-                  "今月誰を確認すればいい？",
-                  "有給の承認待ちは誰？",
+                  {
+                    icon: "¥",
+                    title: "給与サマリー",
+                    text: "今月の給与処理状況をまとめて",
+                    color: "#818cf8",
+                  },
+                  {
+                    icon: "!",
+                    title: "要確認をチェック",
+                    text: "今月誰を確認すればいい？",
+                    color: "#fbbf24",
+                  },
+                  {
+                    icon: "◇",
+                    title: "有給申請",
+                    text: "有給の承認待ちは誰？",
+                    color: "#34d399",
+                  },
                 ].map((example) => (
                   <button
-                    key={example}
+                    key={example.title}
                     type="button"
-                    onClick={() => void sendQuestion(example)}
+                    onClick={() => void sendQuestion(example.text)}
                     disabled={sending}
                     style={{
-                      padding: "8px 12px",
-                      borderRadius: 999,
+                      display: "flex",
+                      gap: 12,
+                      alignItems: "flex-start",
+                      padding: 14,
+                      border:
+                        "1px solid rgba(148,180,216,0.14)",
+                      borderRadius: 15,
+                      background:
+                        "linear-gradient(145deg, rgba(255,255,255,0.055), rgba(255,255,255,0.018))",
+                      color: "#e6edf7",
+                      textAlign: "left",
                       cursor: sending ? "wait" : "pointer",
+                      boxShadow:
+                        "inset 0 1px 0 rgba(255,255,255,0.035)",
                     }}
                   >
-                    {example}
+                    <span
+                      style={{
+                        display: "grid",
+                        placeItems: "center",
+                        width: 32,
+                        height: 32,
+                        flex: "0 0 32px",
+                        borderRadius: 10,
+                        background: `${example.color}18`,
+                        color: example.color,
+                        fontWeight: 900,
+                      }}
+                    >
+                      {example.icon}
+                    </span>
+
+                    <span>
+                      <strong
+                        style={{
+                          display: "block",
+                          marginBottom: 4,
+                          fontSize: 13,
+                        }}
+                      >
+                        {example.title}
+                      </strong>
+                      <span
+                        style={{
+                          color: "#8fa6bf",
+                          fontSize: 12,
+                          lineHeight: 1.5,
+                        }}
+                      >
+                        {example.text}
+                      </span>
+                    </span>
                   </button>
                 ))}
               </div>
