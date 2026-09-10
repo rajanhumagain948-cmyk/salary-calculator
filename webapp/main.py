@@ -48,6 +48,7 @@ from services.ai_context_service import (
     build_employee_attendance_summary,
     build_employee_payroll_summary,
     build_payroll_review_items,
+    build_pending_leave_review_items,
     find_referenced_employee,
     find_referenced_employee_candidates,
 )
@@ -217,11 +218,13 @@ def ai_chat(
 
         payrolls = repo.payroll_results(year_month)
 
+        leave_requests = repo.leave_requests()
+
         summary = build_ai_monthly_summary(
             year_month=year_month,
             employee_count=len(employees),
             payrolls=payrolls,
-            leave_requests=repo.leave_requests(),
+            leave_requests=leave_requests,
         )
 
         employee_names = {
@@ -232,6 +235,23 @@ def ai_chat(
             payrolls,
             employee_names=employee_names,
         )
+
+        pending_leave_items = build_pending_leave_review_items(
+            leave_requests,
+            year_month=year_month,
+            employee_names=employee_names,
+        )
+
+        if pending_leave_items:
+            leave_lines = ["有給承認待ち:"]
+            for item in pending_leave_items:
+                leave_lines.append(
+                    f"- {item['employee_id']} / {item['employee_name']} | "
+                    f"{item['leave_date']} | {item['leave_unit']}"
+                )
+            leave_context = "\n".join(leave_lines) + "\n"
+        else:
+            leave_context = "有給承認待ち: なし\n"
 
         if review_items:
             review_lines = ["給与要確認従業員:"]
@@ -361,6 +381,7 @@ def ai_chat(
             f"給与確定不可件数: {summary['blocked_payroll_count']}\n"
             f"有給申請中件数: {summary['pending_leave_count']}\n"
             f"{review_context}"
+            f"{leave_context}"
             f"{employee_context}"
             "\n"
             f"質問: {message}"

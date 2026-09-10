@@ -641,3 +641,67 @@ def test_ai_chat_adds_payroll_review_people(tmp_path, monkeypatch):
     assert "E001 / 山田太郎" in prompt
     assert "warning: 標準報酬月額を確認してください" in prompt
     assert "blocking issue: 勤怠未確認" in prompt
+
+
+def test_ai_chat_adds_pending_leave_review_people(tmp_path, monkeypatch):
+    from datetime import date
+    from decimal import Decimal
+
+    from models.employee import Employee
+    from models.leave_request import LeaveRequest
+
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    captured = {}
+
+    class CapturingAssistant:
+        def chat(self, message: str) -> str:
+            captured["message"] = message
+            return "有給承認待ちを回答しました。"
+
+    monkeypatch.setattr(main, "ai_assistant", CapturingAssistant())
+
+    test_repo.save_user(
+        User(username="admin", password_hash="unused", role="admin")
+    )
+
+    test_repo.save_employee(
+        Employee(
+            employee_id="E001",
+            name="山田太郎",
+            employment_type="正社員",
+            hire_date=date(2025, 1, 1),
+            pay_type="月給",
+            monthly_salary=Decimal("200000"),
+        )
+    )
+
+    test_repo.save_leave_request(
+        LeaveRequest(
+            employee_id="E001",
+            leave_date=date(2026, 9, 15),
+            status="申請中",
+            leave_unit="全日",
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "admin"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.post(
+        "/ai/chat",
+        data={
+            "message": "有給の承認待ちは誰？",
+            "year_month": "2026-09",
+        },
+    )
+
+    assert response.status_code == 200
+
+    prompt = captured["message"]
+    assert "有給承認待ち:" in prompt
+    assert "E001 / 山田太郎" in prompt
+    assert "2026-09-15" in prompt
+    assert "全日" in prompt
