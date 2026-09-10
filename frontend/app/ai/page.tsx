@@ -96,6 +96,38 @@ export default function AiPage() {
           <p style={{ color: "#8fa6bf", margin: 0 }}>
             給与・有給の月次状況について、ローカルAIに質問できます。
           </p>
+
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 8,
+              marginTop: 12,
+            }}
+          >
+            <span
+              style={{
+                padding: "5px 10px",
+                borderRadius: 999,
+                background: "rgba(100,116,255,0.18)",
+                color: "#b7c0ff",
+                fontSize: 12,
+              }}
+            >
+              ローカルAI
+            </span>
+            <span
+              style={{
+                padding: "5px 10px",
+                borderRadius: 999,
+                background: "rgba(72,187,120,0.14)",
+                color: "#9ae6b4",
+                fontSize: 12,
+              }}
+            >
+              読み取り専用
+            </span>
+          </div>
         </div>
 
         <section
