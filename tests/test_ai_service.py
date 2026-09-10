@@ -72,3 +72,47 @@ def test_ollama_assistant_can_load_configuration_from_environment(monkeypatch):
 
     assert assistant.model == "llama3:latest"
     assert assistant.base_url == "http://127.0.0.1:11435"
+
+
+def test_ollama_assistant_reports_availability(monkeypatch):
+    assistant = OllamaAssistant(
+        base_url="http://localhost:11434",
+    )
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return None
+
+        def read(self):
+            return b'{"models":[]}'
+
+    def fake_urlopen(request, timeout):
+        assert request.full_url == "http://localhost:11434/api/tags"
+        assert timeout == 2
+        return FakeResponse()
+
+    monkeypatch.setattr(
+        "services.ai_service.urlopen",
+        fake_urlopen,
+    )
+
+    assert assistant.is_available() is True
+
+
+def test_ollama_assistant_reports_unavailable_on_connection_error(monkeypatch):
+    from urllib.error import URLError
+
+    assistant = OllamaAssistant()
+
+    def failing_urlopen(request, timeout):
+        raise URLError("connection refused")
+
+    monkeypatch.setattr(
+        "services.ai_service.urlopen",
+        failing_urlopen,
+    )
+
+    assert assistant.is_available() is False

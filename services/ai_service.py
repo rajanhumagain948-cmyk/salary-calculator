@@ -4,6 +4,7 @@ import json
 import os
 from collections.abc import Callable
 from typing import Any
+from urllib.error import URLError
 from urllib.request import Request, urlopen
 
 
@@ -43,6 +44,18 @@ class OllamaAssistant:
                 "http://localhost:11434",
             ),
         )
+
+    def is_available(self) -> bool:
+        request = Request(
+            f"{self.base_url}/api/tags",
+            method="GET",
+        )
+
+        try:
+            with urlopen(request, timeout=2):
+                return True
+        except (OSError, URLError):
+            return False
 
     def chat(self, message: str) -> str:
         return self.chat_messages(
