@@ -82,53 +82,141 @@ export default function AiPage() {
           padding: "28px 16px",
         }}
       >
-        <div style={{ marginBottom: 24 }}>
+        <div
+          style={{
+            position: "relative",
+            overflow: "hidden",
+            marginBottom: 24,
+            padding: "30px 28px",
+            border: "1px solid rgba(129,140,248,0.24)",
+            borderRadius: 24,
+            background:
+              "linear-gradient(135deg, rgba(30,41,78,0.96), rgba(12,24,43,0.94) 55%, rgba(41,27,72,0.90))",
+            boxShadow:
+              "0 24px 80px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.05)",
+          }}
+        >
           <div
             style={{
-              color: "#8390ff",
-              fontSize: 12,
-              fontWeight: 800,
-              letterSpacing: "0.12em",
+              position: "absolute",
+              width: 240,
+              height: 240,
+              right: -70,
+              top: -100,
+              borderRadius: "50%",
+              background:
+                "radial-gradient(circle, rgba(139,92,246,0.30), rgba(79,70,229,0.08) 48%, transparent 70%)",
+              pointerEvents: "none",
+            }}
+          />
+
+          <div
+            style={{
+              position: "relative",
+              display: "flex",
+              alignItems: "center",
+              gap: 18,
             }}
           >
-            AI ASSISTANT
+            <div
+              style={{
+                display: "grid",
+                placeItems: "center",
+                flex: "0 0 auto",
+                width: 58,
+                height: 58,
+                borderRadius: 18,
+                background:
+                  "linear-gradient(135deg, #818cf8, #8b5cf6 55%, #c084fc)",
+                color: "white",
+                fontSize: 28,
+                boxShadow:
+                  "0 0 32px rgba(139,92,246,0.38), inset 0 1px 0 rgba(255,255,255,0.35)",
+              }}
+            >
+              ✦
+            </div>
+
+            <div>
+              <div
+                style={{
+                  color: "#a5b4fc",
+                  fontSize: 12,
+                  fontWeight: 800,
+                  letterSpacing: "0.16em",
+                }}
+              >
+                LOCAL AI ASSISTANT
+              </div>
+
+              <h1
+                style={{
+                  margin: "5px 0 7px",
+                  fontSize: "clamp(26px, 4vw, 38px)",
+                  letterSpacing: "-0.03em",
+                }}
+              >
+                給与業務を、AIともっとスマートに。
+              </h1>
+
+              <p
+                style={{
+                  color: "#a9bad0",
+                  margin: 0,
+                  lineHeight: 1.7,
+                }}
+              >
+                給与・勤怠・有給のデータを横断して、
+                必要な情報をローカルAIがすばやく整理します。
+              </p>
+            </div>
           </div>
 
-          <h1 style={{ margin: "6px 0" }}>AIアシスタント</h1>
-
-          <p style={{ color: "#8fa6bf", margin: 0 }}>
-            給与・有給の月次状況について、ローカルAIに質問できます。
-          </p>
-
           <div
             style={{
+              position: "relative",
               display: "flex",
               flexWrap: "wrap",
-              gap: 8,
-              marginTop: 12,
+              gap: 9,
+              marginTop: 22,
             }}
           >
+            {[
+              ["¥", "給与"],
+              ["◷", "勤怠"],
+              ["◇", "有給"],
+            ].map(([icon, label]) => (
+              <span
+                key={label}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 7,
+                  padding: "7px 12px",
+                  border: "1px solid rgba(165,180,252,0.16)",
+                  borderRadius: 999,
+                  background: "rgba(255,255,255,0.045)",
+                  color: "#d6def0",
+                  fontSize: 13,
+                }}
+              >
+                <span style={{ color: "#a5b4fc" }}>{icon}</span>
+                {label}
+              </span>
+            ))}
+
             <span
               style={{
-                padding: "5px 10px",
+                marginLeft: "auto",
+                padding: "7px 12px",
                 borderRadius: 999,
-                background: "rgba(100,116,255,0.18)",
-                color: "#b7c0ff",
+                background: "rgba(52,211,153,0.11)",
+                color: "#86efac",
                 fontSize: 12,
+                border: "1px solid rgba(52,211,153,0.16)",
               }}
             >
-              ローカルAI
-            </span>
-            <span
-              style={{
-                padding: "5px 10px",
-                borderRadius: 999,
-                background: "rgba(72,187,120,0.14)",
-                color: "#9ae6b4",
-                fontSize: 12,
-              }}
-            >
-              読み取り専用
+              ● 読み取り専用
             </span>
           </div>
         </div>
