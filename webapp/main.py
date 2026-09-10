@@ -344,6 +344,15 @@ def ai_chat(
                 payroll_status["blocking_issues"]
             ) or "なし"
 
+            if payroll_status["calculated"]:
+                payroll_amount_context = (
+                    f"総支給: {payroll_status['gross_pay']}円\n"
+                    f"控除合計: {payroll_status['total_deductions']}円\n"
+                    f"手取り: {payroll_status['net_pay']}円\n"
+                )
+            else:
+                payroll_amount_context = ""
+
             employee_context = (
                 "\n"
                 f"対象従業員: {attendance['employee_name']} "
@@ -359,6 +368,7 @@ def ai_chat(
                 f"給与blocking issue件数: "
                 f"{payroll_status['blocking_issue_count']}\n"
                 f"給与blocking issue内容: {blocking_details}\n"
+                f"{payroll_amount_context}"
                 "給与warningは給与計算結果の警告であり、勤怠警告とは限りません。\n"
                 f"有給残日数: {leave_balance.remaining_days}\n"
                 f"有給申請中日数: {leave_balance.pending_days}\n"
