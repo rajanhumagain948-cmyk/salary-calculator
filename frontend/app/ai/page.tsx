@@ -348,44 +348,125 @@ export default function AiPage() {
               </div>
             </div>
 
-            <label style={{ display: "block" }}>
-              質問
-              <textarea
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                onKeyDown={(e) => {
-                  if (
-                    e.key === "Enter" &&
-                    !e.shiftKey &&
-                    !e.nativeEvent.isComposing
-                  ) {
-                    e.preventDefault();
-                    e.currentTarget.form?.requestSubmit();
-                  }
-                }}
-                placeholder="例: 今月の給与処理状況を教えて"
-                rows={5}
+            <div>
+              <div
                 style={{
-                  display: "block",
-                  width: "100%",
-                  marginTop: 8,
-                  padding: 12,
-                  resize: "vertical",
+                  marginBottom: 8,
+                  color: "#9fb1c7",
+                  fontSize: 13,
+                  fontWeight: 700,
                 }}
-              />
-            </label>
+              >
+                AIに質問する
+              </div>
 
-            <button
-              type="submit"
-              disabled={sending || !message.trim()}
-              style={{
-                marginTop: 16,
-                padding: "10px 18px",
-                cursor: sending ? "wait" : "pointer",
-              }}
-            >
-              {sending ? "AIが確認中..." : "AIに質問"}
-            </button>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-end",
+                  gap: 10,
+                  padding: 10,
+                  border: "1px solid rgba(129,140,248,0.22)",
+                  borderRadius: 18,
+                  background:
+                    "linear-gradient(135deg, rgba(8,18,34,0.80), rgba(18,24,48,0.72))",
+                  boxShadow:
+                    "inset 0 1px 0 rgba(255,255,255,0.035), 0 10px 32px rgba(0,0,0,0.12)",
+                }}
+              >
+                <div
+                  style={{
+                    display: "grid",
+                    placeItems: "center",
+                    width: 36,
+                    height: 36,
+                    flex: "0 0 36px",
+                    marginBottom: 2,
+                    borderRadius: 11,
+                    background: "rgba(139,92,246,0.14)",
+                    color: "#c4b5fd",
+                  }}
+                >
+                  ✦
+                </div>
+
+                <textarea
+                  aria-label="AIへの質問"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (
+                      e.key === "Enter" &&
+                      !e.shiftKey &&
+                      !e.nativeEvent.isComposing
+                    ) {
+                      e.preventDefault();
+                      e.currentTarget.form?.requestSubmit();
+                    }
+                  }}
+                  placeholder="給与・勤怠・有給について質問してください..."
+                  rows={2}
+                  style={{
+                    flex: 1,
+                    minHeight: 46,
+                    maxHeight: 150,
+                    padding: "10px 4px",
+                    border: 0,
+                    outline: "none",
+                    resize: "vertical",
+                    background: "transparent",
+                    color: "#e6edf7",
+                    font: "inherit",
+                    lineHeight: 1.6,
+                  }}
+                />
+
+                <button
+                  type="submit"
+                  aria-label="AIに送信"
+                  disabled={sending || !message.trim()}
+                  style={{
+                    display: "grid",
+                    placeItems: "center",
+                    width: 42,
+                    height: 42,
+                    flex: "0 0 42px",
+                    border: 0,
+                    borderRadius: 13,
+                    background:
+                      sending || !message.trim()
+                        ? "rgba(129,140,248,0.16)"
+                        : "linear-gradient(135deg, #6366f1, #8b5cf6)",
+                    color:
+                      sending || !message.trim()
+                        ? "#697891"
+                        : "white",
+                    cursor:
+                      sending || !message.trim()
+                        ? "not-allowed"
+                        : "pointer",
+                    fontSize: 18,
+                    boxShadow:
+                      sending || !message.trim()
+                        ? "none"
+                        : "0 6px 20px rgba(99,102,241,0.28)",
+                  }}
+                >
+                  {sending ? "…" : "↑"}
+                </button>
+              </div>
+
+              <div
+                style={{
+                  marginTop: 7,
+                  color: "#667991",
+                  fontSize: 11,
+                  textAlign: "right",
+                }}
+              >
+                Enter で送信 ・ Shift + Enter で改行
+              </div>
+            </div>
           </form>
 
           {error && (
