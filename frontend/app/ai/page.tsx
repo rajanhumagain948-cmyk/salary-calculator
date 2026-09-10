@@ -122,6 +122,45 @@ export default function AiPage() {
               />
             </label>
 
+            <div style={{ marginBottom: 16 }}>
+              <div
+                style={{
+                  marginBottom: 8,
+                  color: "#8fa6bf",
+                  fontSize: 13,
+                }}
+              >
+                質問例
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 8,
+                }}
+              >
+                {[
+                  "今月の給与処理状況をまとめて",
+                  "今月誰を確認すればいい？",
+                  "有給の承認待ちは誰？",
+                ].map((example) => (
+                  <button
+                    key={example}
+                    type="button"
+                    onClick={() => setMessage(example)}
+                    disabled={sending}
+                    style={{
+                      padding: "8px 12px",
+                      borderRadius: 999,
+                      cursor: sending ? "wait" : "pointer",
+                    }}
+                  >
+                    {example}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <label style={{ display: "block" }}>
               質問
               <textarea
