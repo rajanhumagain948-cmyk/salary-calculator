@@ -164,3 +164,33 @@ def build_payroll_review_items(
         )
 
     return items
+
+
+def build_pending_leave_review_items(
+    requests: Iterable[Any],
+    *,
+    year_month: str,
+    employee_names: dict[str, str],
+) -> list[dict[str, str]]:
+    items = []
+
+    for request in requests:
+        if request.status != "申請中":
+            continue
+
+        if request.leave_date.strftime("%Y-%m") != year_month:
+            continue
+
+        items.append(
+            {
+                "employee_id": request.employee_id,
+                "employee_name": employee_names.get(
+                    request.employee_id,
+                    request.employee_id,
+                ),
+                "leave_date": request.leave_date.isoformat(),
+                "leave_unit": request.leave_unit,
+            }
+        )
+
+    return items

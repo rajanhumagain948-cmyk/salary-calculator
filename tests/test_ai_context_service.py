@@ -274,3 +274,43 @@ def test_build_payroll_review_items_only_includes_people_needing_review():
             "blocking_issues": ["勤怠を確認してください"],
         },
     ]
+
+
+def test_build_pending_leave_review_items():
+    from datetime import date
+    from models.leave_request import LeaveRequest
+    from services.ai_context_service import build_pending_leave_review_items
+
+    requests = [
+        LeaveRequest(
+            employee_id="E001",
+            leave_date=date(2026, 9, 15),
+            status="申請中",
+            leave_unit="全日",
+        ),
+        LeaveRequest(
+            employee_id="E002",
+            leave_date=date(2026, 9, 20),
+            status="承認",
+            leave_unit="半日",
+            half_day_period="午前",
+        ),
+    ]
+
+    items = build_pending_leave_review_items(
+        requests,
+        year_month="2026-09",
+        employee_names={
+            "E001": "山田太郎",
+            "E002": "佐藤花子",
+        },
+    )
+
+    assert items == [
+        {
+            "employee_id": "E001",
+            "employee_name": "山田太郎",
+            "leave_date": "2026-09-15",
+            "leave_unit": "全日",
+        }
+    ]
