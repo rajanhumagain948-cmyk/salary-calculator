@@ -344,3 +344,39 @@ def test_build_pending_leave_review_items():
             "leave_unit": "全日",
         }
     ]
+
+
+def test_find_referenced_employee_can_use_explicit_id_from_history():
+    from datetime import date
+    from models.employee import Employee
+    from services.ai_context_service import find_referenced_employee_from_history
+
+    employees = [
+        Employee(
+            employee_id="W250651",
+            name="ホムガイ",
+            employment_type="正社員",
+            hire_date=date(2026, 6, 1),
+            pay_type="月給",
+        ),
+        Employee(
+            employee_id="W250652",
+            name="ホムガイ",
+            employment_type="正社員",
+            hire_date=date(2026, 6, 1),
+            pay_type="月給",
+        ),
+    ]
+
+    history = [
+        {"role": "user", "content": "W250651の給与を教えて"},
+        {"role": "assistant", "content": "給与情報です。"},
+    ]
+
+    employee = find_referenced_employee_from_history(
+        history,
+        employees,
+    )
+
+    assert employee is not None
+    assert employee.employee_id == "W250651"

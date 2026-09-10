@@ -225,3 +225,31 @@ def build_pending_leave_review_items(
         )
 
     return items
+
+
+def find_referenced_employee_from_history(
+    history: Iterable[dict[str, str]],
+    employees: Iterable[Any],
+):
+    employees = list(employees)
+
+    for message in reversed(list(history)):
+        if message.get("role") != "user":
+            continue
+
+        content = message.get("content", "")
+
+        matches = [
+            employee
+            for employee in employees
+            if employee.employee_id
+            and employee.employee_id in content
+        ]
+
+        if len(matches) == 1:
+            return matches[0]
+
+        if len(matches) > 1:
+            return None
+
+    return None
