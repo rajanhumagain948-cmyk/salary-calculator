@@ -15,7 +15,11 @@ export default function AiPage() {
   const [yearMonth, setYearMonth] = useState(currentYearMonth);
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<
-    { role: "user" | "assistant"; content: string }[]
+    {
+      role: "user" | "assistant";
+      content: string;
+      sources?: string[];
+    }[]
   >([]);
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
@@ -35,7 +39,12 @@ export default function AiPage() {
       form.append("year_month", yearMonth);
 
       if (messages.length > 0) {
-        form.append("history", JSON.stringify(messages));
+        form.append(
+          "history",
+          JSON.stringify(
+            messages.map(({ role, content }) => ({ role, content }))
+          )
+        );
       }
 
       const res = await fetch(`${API_BASE}/ai/chat`, {
@@ -58,7 +67,11 @@ export default function AiPage() {
       setMessages((current) => [
         ...current,
         { role: "user", content: question },
-        { role: "assistant", content: data.answer ?? "" },
+        {
+          role: "assistant",
+          content: data.answer ?? "",
+          sources: Array.isArray(data.sources) ? data.sources : [],
+        },
       ]);
       setMessage("");
     } catch {
@@ -546,6 +559,47 @@ export default function AiPage() {
                         {isUser ? "YOU" : "LOCAL AI"}
                       </div>
                       {item.content}
+
+                      {!isUser &&
+                        item.sources &&
+                        item.sources.length > 0 && (
+                          <div
+                            style={{
+                              display: "flex",
+                              flexWrap: "wrap",
+                              gap: 6,
+                              marginTop: 12,
+                              paddingTop: 10,
+                              borderTop:
+                                "1px solid rgba(148,180,216,0.10)",
+                            }}
+                          >
+                            <span
+                              style={{
+                                color: "#74869d",
+                                fontSize: 10,
+                                lineHeight: "24px",
+                              }}
+                            >
+                              参照
+                            </span>
+                            {item.sources.map((source) => (
+                              <span
+                                key={source}
+                                style={{
+                                  padding: "3px 8px",
+                                  borderRadius: 999,
+                                  background:
+                                    "rgba(129,140,248,0.10)",
+                                  color: "#aab5d7",
+                                  fontSize: 10,
+                                }}
+                              >
+                                {source}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                     </div>
                   </div>
                 );
