@@ -154,6 +154,14 @@ def test_build_employee_payroll_summary():
             holiday_minutes=420,
             overtime_over_60_minutes=30,
         ),
+        payments={
+            "基本給": __import__("decimal").Decimal("200000"),
+            "時間外手当": __import__("decimal").Decimal("10000"),
+        },
+        deductions={
+            "健康保険": __import__("decimal").Decimal("9850"),
+            "所得税": __import__("decimal").Decimal("3270"),
+        },
         warnings=["確認してください"],
         blocking_issues=["勤怠未確認"],
         finalized=False,
@@ -174,14 +182,22 @@ def test_build_employee_payroll_summary():
         "blocking_issue_count": 1,
         "warnings": ["確認してください"],
         "blocking_issues": ["勤怠未確認"],
-        "gross_pay": "0",
-        "total_deductions": "0",
-        "net_pay": "0",
+        "gross_pay": "210000",
+        "total_deductions": "13120",
+        "net_pay": "196880",
         "regular_minutes": 9600,
         "overtime_minutes": 300,
         "night_minutes": 60,
         "holiday_minutes": 420,
         "overtime_over_60_minutes": 30,
+        "payments": {
+            "基本給": "200000",
+            "時間外手当": "10000",
+        },
+        "deductions": {
+            "健康保険": "9850",
+            "所得税": "3270",
+        },
     }
 
     missing = build_employee_payroll_summary(

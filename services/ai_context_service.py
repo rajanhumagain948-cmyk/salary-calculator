@@ -90,7 +90,10 @@ def build_employee_payroll_summary(
     employee_id: str,
     year_month: str,
     payroll: Any | None,
-) -> dict[str, int | str | bool | list[str] | None]:
+) -> dict[
+    str,
+    int | str | bool | list[str] | dict[str, str] | None,
+]:
     if payroll is None:
         return {
             "employee_id": employee_id,
@@ -109,6 +112,8 @@ def build_employee_payroll_summary(
             "night_minutes": None,
             "holiday_minutes": None,
             "overtime_over_60_minutes": None,
+            "payments": {},
+            "deductions": {},
         }
 
     return {
@@ -130,6 +135,14 @@ def build_employee_payroll_summary(
         "overtime_over_60_minutes": (
             payroll.classification.overtime_over_60_minutes
         ),
+        "payments": {
+            name: str(amount)
+            for name, amount in payroll.payments.items()
+        },
+        "deductions": {
+            name: str(amount)
+            for name, amount in payroll.deductions.items()
+        },
     }
 
 
