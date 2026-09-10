@@ -231,6 +231,7 @@ def ai_chat(
             )
 
     prompt = message
+    sources = []
 
     if year_month:
         year_month = normalize_input(year_month)
@@ -251,6 +252,12 @@ def ai_chat(
                 status_code=400,
                 detail="year_month must be YYYY-MM",
             )
+
+        sources = [
+            "月次給与状況",
+            "給与要確認",
+            "有給承認待ち",
+        ]
 
         employees = repo.employees()
 
@@ -511,6 +518,7 @@ def ai_chat(
 
     return {
         "answer": answer,
+        "sources": sources,
     }
 
 

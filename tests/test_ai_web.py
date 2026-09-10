@@ -36,6 +36,7 @@ def test_admin_can_chat_with_ai_assistant(tmp_path, monkeypatch):
     assert response.status_code == 200
     assert response.json() == {
         "answer": "給与についての回答です。",
+        "sources": [],
     }
 
 
@@ -134,6 +135,11 @@ def test_ai_chat_receives_monthly_company_summary(tmp_path, monkeypatch):
     )
 
     assert response.status_code == 200
+    assert response.json()["sources"] == [
+        "月次給与状況",
+        "給与要確認",
+        "有給承認待ち",
+    ]
 
     prompt = captured["message"]
     assert "2026-09" in prompt
