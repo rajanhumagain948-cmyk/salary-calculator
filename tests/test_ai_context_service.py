@@ -147,7 +147,13 @@ def test_build_employee_payroll_summary():
     payroll = PayrollResult(
         employee_id="E001",
         year_month="2026-09",
-        classification=TimeClassification(),
+        classification=TimeClassification(
+            regular_minutes=9600,
+            overtime_minutes=300,
+            night_minutes=60,
+            holiday_minutes=420,
+            overtime_over_60_minutes=30,
+        ),
         warnings=["確認してください"],
         blocking_issues=["勤怠未確認"],
         finalized=False,
@@ -171,6 +177,11 @@ def test_build_employee_payroll_summary():
         "gross_pay": "0",
         "total_deductions": "0",
         "net_pay": "0",
+        "regular_minutes": 9600,
+        "overtime_minutes": 300,
+        "night_minutes": 60,
+        "holiday_minutes": 420,
+        "overtime_over_60_minutes": 30,
     }
 
     missing = build_employee_payroll_summary(

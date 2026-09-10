@@ -104,6 +104,11 @@ def build_employee_payroll_summary(
             "gross_pay": None,
             "total_deductions": None,
             "net_pay": None,
+            "regular_minutes": None,
+            "overtime_minutes": None,
+            "night_minutes": None,
+            "holiday_minutes": None,
+            "overtime_over_60_minutes": None,
         }
 
     return {
@@ -118,6 +123,13 @@ def build_employee_payroll_summary(
         "gross_pay": str(payroll.gross_pay),
         "total_deductions": str(payroll.total_deductions),
         "net_pay": str(payroll.net_pay),
+        "regular_minutes": payroll.classification.regular_minutes,
+        "overtime_minutes": payroll.classification.overtime_minutes,
+        "night_minutes": payroll.classification.night_minutes,
+        "holiday_minutes": payroll.classification.holiday_minutes,
+        "overtime_over_60_minutes": (
+            payroll.classification.overtime_over_60_minutes
+        ),
     }
 
 
