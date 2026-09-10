@@ -346,10 +346,21 @@ def ai_chat(
             ) or "なし"
 
             if payroll_status["calculated"]:
+                payment_details = " / ".join(
+                    f"{name}={amount}円"
+                    for name, amount in payroll_status["payments"].items()
+                ) or "なし"
+                deduction_details = " / ".join(
+                    f"{name}={amount}円"
+                    for name, amount in payroll_status["deductions"].items()
+                ) or "なし"
+
                 payroll_amount_context = (
                     f"総支給: {payroll_status['gross_pay']}円\n"
                     f"控除合計: {payroll_status['total_deductions']}円\n"
                     f"手取り: {payroll_status['net_pay']}円\n"
+                    f"支給内訳: {payment_details}\n"
+                    f"控除内訳: {deduction_details}\n"
                 )
                 attendance_time_context = (
                     "所定内時間: "

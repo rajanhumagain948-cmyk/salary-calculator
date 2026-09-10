@@ -443,6 +443,8 @@ def test_ai_chat_adds_referenced_employee_payroll_status(tmp_path, monkeypatch):
     assert "総支給: 200000円" in prompt
     assert "控除合計: 3270円" in prompt
     assert "手取り: 196730円" in prompt
+    assert "支給内訳: 基本給=200000円" in prompt
+    assert "控除内訳: 所得税=3270円" in prompt
     assert "所定内時間: 160時間00分" in prompt
     assert "時間外: 5時間00分" in prompt
     assert "深夜: 1時間00分" in prompt
