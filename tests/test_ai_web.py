@@ -796,3 +796,43 @@ def test_ai_chat_keeps_employee_context_from_history(tmp_path, monkeypatch):
     current_prompt = captured["messages"][-1]["content"]
     assert "対象従業員: ホムガイ (W250651)" in current_prompt
     assert "有給残日数:" in current_prompt
+
+
+def test_ai_chat_records_safe_audit_log(tmp_path, monkeypatch):
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    class AuditAssistant:
+        def chat(self, message: str) -> str:
+            return "回答です。"
+
+    monkeypatch.setattr(main, "ai_assistant", AuditAssistant())
+
+    test_repo.save_user(
+        User(username="admin", password_hash="unused", role="admin")
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "admin"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.post(
+        "/ai/chat",
+        data={
+            "message": "給与について秘密の質問",
+            "year_month": "2026-09",
+        },
+    )
+
+    assert response.status_code == 200
+
+    audit = test_repo.recent_audit()
+    ai_logs = [row for row in audit if row[1] == "AIアシスタント利用"]
+
+    assert len(ai_logs) == 1
+    assert ai_logs[0][2] == "admin"
+    assert ai_logs[0][3] == "対象月=2026-09 結果=成功"
+
+    serialized = " ".join(ai_logs[0])
+    assert "秘密の質問" not in serialized
+    assert "回答です" not in serialized
