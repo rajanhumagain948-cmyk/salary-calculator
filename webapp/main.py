@@ -75,7 +75,7 @@ app.add_middleware(
 templates = Jinja2Templates(directory="webapp/templates")
 
 repo = PayrollRepository(Path("data/payroll.sqlite3"))
-ai_assistant = OllamaAssistant()
+ai_assistant = OllamaAssistant.from_env()
 serializer = URLSafeSerializer("dev-secret-change-me", salt="session")
 
 COOKIE_NAME = "salary_session"
