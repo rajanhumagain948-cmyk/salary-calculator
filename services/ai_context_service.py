@@ -90,7 +90,7 @@ def build_employee_payroll_summary(
     employee_id: str,
     year_month: str,
     payroll: Any | None,
-) -> dict[str, int | str | bool | list[str]]:
+) -> dict[str, int | str | bool | list[str] | None]:
     if payroll is None:
         return {
             "employee_id": employee_id,
@@ -101,6 +101,9 @@ def build_employee_payroll_summary(
             "blocking_issue_count": 0,
             "warnings": [],
             "blocking_issues": [],
+            "gross_pay": None,
+            "total_deductions": None,
+            "net_pay": None,
         }
 
     return {
@@ -112,6 +115,9 @@ def build_employee_payroll_summary(
         "blocking_issue_count": len(payroll.blocking_issues),
         "warnings": list(payroll.warnings),
         "blocking_issues": list(payroll.blocking_issues),
+        "gross_pay": str(payroll.gross_pay),
+        "total_deductions": str(payroll.total_deductions),
+        "net_pay": str(payroll.net_pay),
     }
 
 

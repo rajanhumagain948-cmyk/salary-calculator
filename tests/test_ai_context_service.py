@@ -168,6 +168,9 @@ def test_build_employee_payroll_summary():
         "blocking_issue_count": 1,
         "warnings": ["確認してください"],
         "blocking_issues": ["勤怠未確認"],
+        "gross_pay": "0",
+        "total_deductions": "0",
+        "net_pay": "0",
     }
 
     missing = build_employee_payroll_summary(
