@@ -337,6 +337,13 @@ def ai_chat(
                 referenced_employee.employee_id,
                 month_end,
             )
+            try:
+                next_grant = next_leave_grant(
+                    referenced_employee,
+                    month_end,
+                )
+            except ValueError:
+                next_grant = None
 
             warning_details = " / ".join(
                 payroll_status["warnings"]
@@ -399,6 +406,13 @@ def ai_chat(
                 f"有給残日数: {leave_balance.remaining_days}\n"
                 f"有給申請中日数: {leave_balance.pending_days}\n"
                 f"有給申請可能日数: {leave_balance.available_days}\n"
+                + (
+                    f"次回有給付与予定日: {next_grant.grant_date.isoformat()}\n"
+                    f"次回有給付与予定日数: {next_grant.days}\n"
+                    "実際の付与にはadminによる要件確認が必要です。\n"
+                    if next_grant is not None
+                    else "次回有給付与予定: 勤務条件未設定のため算出不可\n"
+                )
             )
 
         prompt = (

@@ -492,6 +492,8 @@ def test_ai_chat_adds_referenced_employee_leave_balance(tmp_path, monkeypatch):
             hire_date=date(2025, 1, 1),
             pay_type="月給",
             monthly_salary=Decimal("200000"),
+            weekly_days=5,
+            weekly_hours=Decimal("40"),
         )
     )
 
@@ -538,6 +540,9 @@ def test_ai_chat_adds_referenced_employee_leave_balance(tmp_path, monkeypatch):
     assert "有給残日数: 10" in prompt
     assert "有給申請中日数: 1" in prompt
     assert "有給申請可能日数: 9" in prompt
+    assert "次回有給付与予定日: 2027-07-01" in prompt
+    assert "次回有給付与予定日数: 12" in prompt
+    assert "実際の付与にはadminによる要件確認が必要です。" in prompt
 
 
 def test_ai_chat_asks_for_employee_id_when_name_is_ambiguous(
