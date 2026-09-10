@@ -20,10 +20,8 @@ export default function AiPage() {
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
 
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-
-    const question = message.trim();
+  async function sendQuestion(rawQuestion: string) {
+    const question = rawQuestion.trim();
     if (!question || sending) {
       return;
     }
@@ -68,6 +66,11 @@ export default function AiPage() {
     } finally {
       setSending(false);
     }
+  }
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    await sendQuestion(message);
   }
 
   return (
@@ -179,7 +182,7 @@ export default function AiPage() {
                   <button
                     key={example}
                     type="button"
-                    onClick={() => setMessage(example)}
+                    onClick={() => void sendQuestion(example)}
                     disabled={sending}
                     style={{
                       padding: "8px 12px",
