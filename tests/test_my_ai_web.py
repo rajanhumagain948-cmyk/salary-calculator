@@ -434,6 +434,8 @@ def test_employee_ai_receives_own_leave_balance(tmp_path, monkeypatch):
             employment_type="正社員",
             hire_date=date(2025, 1, 1),
             pay_type="月給",
+            weekly_days=5,
+            weekly_hours=Decimal("40"),
         )
     )
     test_repo.save_user(
@@ -484,3 +486,6 @@ def test_employee_ai_receives_own_leave_balance(tmp_path, monkeypatch):
     assert "有給残日数: 10" in prompt
     assert "有給申請中日数: 1" in prompt
     assert "有給申請可能日数: 9" in prompt
+    assert "次回有給付与予定日:" in prompt
+    assert "次回有給付与予定日数:" in prompt
+    assert "実際の付与にはadminによる要件確認が必要です。" in prompt
