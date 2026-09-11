@@ -795,3 +795,63 @@ def test_admin_cannot_view_employee_ai_status(tmp_path, monkeypatch):
 
     assert response.status_code == 403
     assert response.json()["detail"] == "employee only"
+
+
+def test_employee_ai_passes_conversation_history(tmp_path, monkeypatch):
+    import json
+    from datetime import date
+
+    from models.employee import Employee
+
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    captured = {}
+
+    class ConversationAssistant:
+        def chat_messages(self, messages):
+            captured["messages"] = messages
+            return "続きの回答です。"
+
+    monkeypatch.setattr(main, "ai_assistant", ConversationAssistant())
+
+    test_repo.save_employee(
+        Employee(
+            employee_id="E001",
+            name="本人",
+            employment_type="正社員",
+            hire_date=date(2025, 1, 1),
+            pay_type="月給",
+        )
+    )
+    test_repo.save_user(
+        User(
+            username="employee",
+            password_hash="unused",
+            role="employee",
+            employee_id="E001",
+        )
+    )
+
+    client = TestClient(main.app, raise_server_exceptions=False)
+    token = main.serializer.dumps({"username": "employee"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    history = [
+        {"role": "user", "content": "今月の給与を教えて"},
+        {"role": "assistant", "content": "給与について回答しました。"},
+    ]
+
+    response = client.post(
+        "/my/ai/chat",
+        data={
+            "message": "じゃあ有給は？",
+            "history": json.dumps(history, ensure_ascii=False),
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["answer"] == "続きの回答です。"
+    assert captured["messages"][:2] == history
+    assert captured["messages"][-1]["role"] == "user"
+    assert "質問: じゃあ有給は?" in captured["messages"][-1]["content"]
