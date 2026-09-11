@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 from collections.abc import Callable
+from functools import partial
 from typing import Any
 from urllib.error import URLError
 from urllib.request import Request, urlopen
@@ -11,7 +12,12 @@ from urllib.request import Request, urlopen
 PostJson = Callable[[str, dict[str, Any]], dict[str, Any]]
 
 
-def _post_json(url: str, payload: dict[str, Any]) -> dict[str, Any]:
+def _post_json(
+    url: str,
+    payload: dict[str, Any],
+    *,
+    timeout: float = 60,
+) -> dict[str, Any]:
     request = Request(
         url,
         data=json.dumps(payload).encode("utf-8"),
@@ -19,7 +25,7 @@ def _post_json(url: str, payload: dict[str, Any]) -> dict[str, Any]:
         method="POST",
     )
 
-    with urlopen(request, timeout=60) as response:
+    with urlopen(request, timeout=timeout) as response:
         return json.loads(response.read().decode("utf-8"))
 
 
@@ -30,10 +36,16 @@ class OllamaAssistant:
         model: str = "qwen3:8b",
         base_url: str = "http://localhost:11434",
         post_json: PostJson = _post_json,
+        timeout_seconds: float = 60,
     ) -> None:
         self.model = model
         self.base_url = base_url.rstrip("/")
-        self.post_json = post_json
+        self.timeout_seconds = timeout_seconds
+        self.post_json = (
+            partial(_post_json, timeout=timeout_seconds)
+            if post_json is _post_json
+            else post_json
+        )
 
     @classmethod
     def from_env(cls) -> "OllamaAssistant":
@@ -43,6 +55,7 @@ class OllamaAssistant:
                 "OLLAMA_BASE_URL",
                 "http://localhost:11434",
             ),
+            timeout_seconds=float(os.getenv("OLLAMA_TIMEOUT_SECONDS", "60")),
         )
 
     def is_available(self) -> bool:

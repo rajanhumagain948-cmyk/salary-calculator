@@ -116,3 +116,11 @@ def test_ollama_assistant_reports_unavailable_on_connection_error(monkeypatch):
     )
 
     assert assistant.is_available() is False
+
+
+def test_ollama_assistant_loads_timeout_from_environment(monkeypatch):
+    monkeypatch.setenv("OLLAMA_TIMEOUT_SECONDS", "30")
+
+    assistant = OllamaAssistant.from_env()
+
+    assert assistant.timeout_seconds == 30
