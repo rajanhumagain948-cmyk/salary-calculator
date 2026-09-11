@@ -49,13 +49,18 @@ class OllamaAssistant:
 
     @classmethod
     def from_env(cls) -> "OllamaAssistant":
+        try:
+            timeout_seconds = float(os.getenv("OLLAMA_TIMEOUT_SECONDS", "60"))
+        except ValueError:
+            timeout_seconds = 60
+
         return cls(
             model=os.getenv("OLLAMA_MODEL", "qwen3:8b"),
             base_url=os.getenv(
                 "OLLAMA_BASE_URL",
                 "http://localhost:11434",
             ),
-            timeout_seconds=float(os.getenv("OLLAMA_TIMEOUT_SECONDS", "60")),
+            timeout_seconds=timeout_seconds,
         )
 
     def is_available(self) -> bool:
