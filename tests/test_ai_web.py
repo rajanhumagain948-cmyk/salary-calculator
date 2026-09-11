@@ -1076,3 +1076,64 @@ def test_ai_chat_rejects_empty_history_content(tmp_path, monkeypatch):
 
     assert response.status_code == 400
     assert response.json()["detail"] == "invalid AI chat history"
+
+
+def test_ai_chat_does_not_reuse_history_employee_when_message_has_multiple_ids(
+    tmp_path,
+    monkeypatch,
+):
+    import json
+    from datetime import date
+    from decimal import Decimal
+    from models.employee import Employee
+
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    captured = {}
+
+    class CapturingAssistant:
+        def chat_messages(self, messages):
+            captured["messages"] = messages
+            return "回答です。"
+
+    monkeypatch.setattr(main, "ai_assistant", CapturingAssistant())
+
+    test_repo.save_user(
+        User(username="admin", password_hash="unused", role="admin")
+    )
+
+    for employee_id, name in (
+        ("W250651", "ホムガイA"),
+        ("W250652", "ホムガイB"),
+    ):
+        test_repo.save_employee(
+            Employee(
+                employee_id=employee_id,
+                name=name,
+                employment_type="正社員",
+                hire_date=date(2026, 6, 1),
+                pay_type="月給",
+                monthly_salary=Decimal("200000"),
+            )
+        )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "admin"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.post(
+        "/ai/chat",
+        data={
+            "message": "W250651とW250652を比較して",
+            "year_month": "2026-09",
+            "history": json.dumps(
+                [{"role": "user", "content": "W250651の給与を教えて"}],
+                ensure_ascii=False,
+            ),
+        },
+    )
+
+    assert response.status_code == 200
+    current_prompt = captured["messages"][-1]["content"]
+    assert "対象従業員:" not in current_prompt

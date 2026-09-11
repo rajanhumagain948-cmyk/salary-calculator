@@ -368,7 +368,11 @@ def ai_chat(
             employees,
         )
 
-        if referenced_employee is None and conversation:
+        if (
+            referenced_employee is None
+            and not employee_candidates
+            and conversation
+        ):
             referenced_employee = find_referenced_employee_from_history(
                 conversation,
                 employees,
