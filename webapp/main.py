@@ -301,6 +301,16 @@ def my_ai_chat(
                 f"手取り: {payroll_status['net_pay']}円\n"
                 f"支給内訳: {payment_details}\n"
                 f"控除内訳: {deduction_details}\n"
+                "所定内時間: "
+                f"{format_minutes(payroll_status['regular_minutes'])}\n"
+                "時間外: "
+                f"{format_minutes(payroll_status['overtime_minutes'])}\n"
+                "深夜: "
+                f"{format_minutes(payroll_status['night_minutes'])}\n"
+                "休日: "
+                f"{format_minutes(payroll_status['holiday_minutes'])}\n"
+                "月60時間超: "
+                f"{format_minutes(payroll_status['overtime_over_60_minutes'])}\n"
             )
 
     prompt = (

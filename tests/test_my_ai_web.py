@@ -366,7 +366,13 @@ def test_employee_ai_receives_finalized_payroll_amounts(tmp_path, monkeypatch):
         PayrollResult(
             employee_id="E001",
             year_month="2026-09",
-            classification=TimeClassification(),
+            classification=TimeClassification(
+                regular_minutes=9600,
+                overtime_minutes=300,
+                night_minutes=60,
+                holiday_minutes=420,
+                overtime_over_60_minutes=30,
+            ),
             payments={"基本給": Decimal("200000")},
             deductions={"所得税": Decimal("5000")},
             finalized=True,
@@ -393,3 +399,8 @@ def test_employee_ai_receives_finalized_payroll_amounts(tmp_path, monkeypatch):
     assert "手取り: 195000円" in prompt
     assert "支給内訳: 基本給=200000円" in prompt
     assert "控除内訳: 所得税=5000円" in prompt
+    assert "所定内時間: 160時間00分" in prompt
+    assert "時間外: 5時間00分" in prompt
+    assert "深夜: 1時間00分" in prompt
+    assert "休日: 7時間00分" in prompt
+    assert "月60時間超: 0時間30分" in prompt
