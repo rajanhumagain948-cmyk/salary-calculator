@@ -198,6 +198,7 @@ def ai_status(request: Request):
 def my_ai_chat(
     request: Request,
     message: str = Form(...),
+    year_month: str | None = Form(None),
 ):
     user = require_user(request)
 
@@ -219,6 +220,26 @@ def my_ai_chat(
             status_code=400,
             detail="message must be 2000 characters or fewer",
         )
+
+    if year_month:
+        year_month = normalize_input(year_month)
+
+        try:
+            parsed_year_month = datetime.strptime(
+                year_month,
+                "%Y-%m",
+            )
+        except ValueError as error:
+            raise HTTPException(
+                status_code=400,
+                detail="year_month must be YYYY-MM",
+            ) from error
+
+        if parsed_year_month.strftime("%Y-%m") != year_month:
+            raise HTTPException(
+                status_code=400,
+                detail="year_month must be YYYY-MM",
+            )
 
     employee_id = normalize_input(user.employee_id)
     employee = next(

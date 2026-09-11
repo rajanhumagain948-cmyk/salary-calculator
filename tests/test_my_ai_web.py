@@ -165,3 +165,32 @@ def test_employee_ai_rejects_message_over_2000_characters(tmp_path, monkeypatch)
 
     assert response.status_code == 400
     assert response.json()["detail"] == "message must be 2000 characters or fewer"
+
+
+def test_employee_ai_rejects_invalid_year_month(tmp_path, monkeypatch):
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    test_repo.save_user(
+        User(
+            username="employee",
+            password_hash="unused",
+            role="employee",
+            employee_id="E001",
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "employee"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.post(
+        "/my/ai/chat",
+        data={
+            "message": "今月の給与を教えて",
+            "year_month": "2026-9",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "year_month must be YYYY-MM"
