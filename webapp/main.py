@@ -194,6 +194,22 @@ def ai_status(request: Request):
     }
 
 
+@app.post("/my/ai/chat")
+def my_ai_chat(
+    request: Request,
+    message: str = Form(...),
+):
+    user = require_user(request)
+
+    if user.role != "employee":
+        raise HTTPException(status_code=403, detail="employee only")
+
+    if not user.employee_id:
+        raise HTTPException(status_code=400, detail="employee_id not set")
+
+    return {"answer": ""}
+
+
 @app.post("/ai/chat")
 def ai_chat(
     request: Request,
