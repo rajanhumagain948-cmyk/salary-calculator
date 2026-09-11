@@ -258,3 +258,69 @@ def test_employee_ai_receives_own_attendance_summary(tmp_path, monkeypatch):
     assert "対象月: 2026-09" in prompt
     assert "勤怠記録件数: 1" in prompt
     assert "出勤日数: 1" in prompt
+
+
+def test_employee_ai_does_not_receive_unfinalized_payroll(tmp_path, monkeypatch):
+    from datetime import date
+    from decimal import Decimal
+
+    from models.employee import Employee
+    from models.payroll import PayrollResult, TimeClassification
+
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    captured = {}
+
+    class CapturingAssistant:
+        def chat(self, message: str) -> str:
+            captured["message"] = message
+            return "回答です。"
+
+    monkeypatch.setattr(main, "ai_assistant", CapturingAssistant())
+
+    test_repo.save_employee(
+        Employee(
+            employee_id="E001",
+            name="山田太郎",
+            employment_type="正社員",
+            hire_date=date(2025, 1, 1),
+            pay_type="月給",
+        )
+    )
+    test_repo.save_user(
+        User(
+            username="employee",
+            password_hash="unused",
+            role="employee",
+            employee_id="E001",
+        )
+    )
+    test_repo.save_payroll_result(
+        PayrollResult(
+            employee_id="E001",
+            year_month="2026-09",
+            classification=TimeClassification(),
+            payments={"基本給": Decimal("987654")},
+            deductions={"所得税": Decimal("12345")},
+            finalized=False,
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "employee"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.post(
+        "/my/ai/chat",
+        data={
+            "message": "今月の給与はいくら？",
+            "year_month": "2026-09",
+        },
+    )
+
+    assert response.status_code == 200
+    prompt = captured["message"]
+    assert "987654" not in prompt
+    assert "12345" not in prompt
+    assert "未確定給与は参照できません" in prompt

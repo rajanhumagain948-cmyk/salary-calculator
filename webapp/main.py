@@ -255,6 +255,7 @@ def my_ai_chat(
         raise HTTPException(status_code=404, detail="employee not found")
 
     attendance_context = ""
+    payroll_context = ""
 
     if year_month:
         attendance = build_employee_attendance_summary(
@@ -272,10 +273,18 @@ def my_ai_chat(
             f"出勤日数: {attendance['attendance_days']}\n"
         )
 
+        payroll = repo.payroll_result(
+            employee.employee_id,
+            year_month,
+        )
+        if payroll is not None and not payroll.finalized:
+            payroll_context = "未確定給与は参照できません。\n"
+
     prompt = (
         "以下はログイン中の従業員本人向けの読み取り専用AIです。\n"
         f"対象従業員: {employee.name} ({employee.employee_id})\n"
         f"{attendance_context}"
+        f"{payroll_context}"
         f"質問: {message}"
     )
 
