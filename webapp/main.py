@@ -366,6 +366,11 @@ def my_ai_chat(
     try:
         answer = ai_assistant.chat(prompt)
     except (ConnectionError, TimeoutError, URLError) as error:
+        repo.audit(
+            "従業員AIアシスタント利用",
+            user.username,
+            f"対象月={year_month or '未指定'} 結果=失敗",
+        )
         raise HTTPException(
             status_code=503,
             detail="AIアシスタントに接続できません。",

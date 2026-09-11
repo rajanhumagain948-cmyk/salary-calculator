@@ -659,11 +659,24 @@ def test_employee_ai_returns_503_when_assistant_is_unavailable(
 
     response = client.post(
         "/my/ai/chat",
-        data={"message": "今月の勤怠を教えて"},
+        data={
+            "message": "失敗時にも保存しない秘密の質問",
+            "year_month": "2026-09",
+        },
     )
 
     assert response.status_code == 503
     assert response.json()["detail"] == "AIアシスタントに接続できません。"
+
+    logs = [
+        row
+        for row in test_repo.recent_audit()
+        if row[1] == "従業員AIアシスタント利用"
+    ]
+    assert len(logs) == 1
+    assert logs[0][2] == "employee"
+    assert logs[0][3] == "対象月=2026-09 結果=失敗"
+    assert "保存しない秘密の質問" not in " ".join(logs[0])
 
 
 def test_employee_ai_records_safe_success_audit(tmp_path, monkeypatch):
