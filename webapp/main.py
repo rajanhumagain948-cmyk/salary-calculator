@@ -207,7 +207,28 @@ def my_ai_chat(
     if not user.employee_id:
         raise HTTPException(status_code=400, detail="employee_id not set")
 
-    return {"answer": ""}
+    employee_id = normalize_input(user.employee_id)
+    employee = next(
+        (
+            item
+            for item in repo.employees()
+            if item.employee_id == employee_id
+        ),
+        None,
+    )
+
+    if employee is None:
+        raise HTTPException(status_code=404, detail="employee not found")
+
+    prompt = (
+        "以下はログイン中の従業員本人向けの読み取り専用AIです。\n"
+        f"対象従業員: {employee.name} ({employee.employee_id})\n"
+        f"質問: {normalize_input(message)}"
+    )
+
+    answer = ai_assistant.chat(prompt)
+
+    return {"answer": answer}
 
 
 @app.post("/ai/chat")
