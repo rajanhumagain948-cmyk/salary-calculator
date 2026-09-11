@@ -190,6 +190,7 @@ def ai_status(request: Request):
             base_url.startswith("http://localhost:")
             or base_url.startswith("http://127.0.0.1:")
         ),
+        "available": ai_assistant.is_available(),
     }
 
 
