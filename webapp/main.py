@@ -255,7 +255,7 @@ def my_ai_chat(
                 detail="invalid AI chat history",
             ) from error
 
-        if not isinstance(parsed_history, list):
+        if not isinstance(parsed_history, list) or len(parsed_history) > 20:
             raise HTTPException(
                 status_code=400,
                 detail="invalid AI chat history",
