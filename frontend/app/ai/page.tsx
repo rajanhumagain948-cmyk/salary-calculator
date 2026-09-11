@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import AuthGuard from "@/components/auth/AuthGuard";
 
 const API_BASE =
@@ -23,6 +23,32 @@ export default function AiPage() {
   >([]);
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
+  const [aiStatus, setAiStatus] = useState<{
+    model: string;
+    local: boolean;
+    available: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    async function loadAiStatus() {
+      try {
+        const res = await fetch(`${API_BASE}/ai/status`, {
+          credentials: "include",
+          cache: "no-store",
+        });
+
+        if (!res.ok) {
+          return;
+        }
+
+        setAiStatus(await res.json());
+      } catch {
+        setAiStatus(null);
+      }
+    }
+
+    void loadAiStatus();
+  }, []);
 
   async function sendQuestion(rawQuestion: string) {
     const question = rawQuestion.trim();
@@ -223,13 +249,34 @@ export default function AiPage() {
                 marginLeft: "auto",
                 padding: "7px 12px",
                 borderRadius: 999,
-                background: "rgba(52,211,153,0.11)",
-                color: "#86efac",
+                background: aiStatus?.available
+                  ? "rgba(52,211,153,0.11)"
+                  : "rgba(248,113,113,0.10)",
+                color: aiStatus?.available ? "#86efac" : "#fca5a5",
                 fontSize: 12,
-                border: "1px solid rgba(52,211,153,0.16)",
+                border: aiStatus?.available
+                  ? "1px solid rgba(52,211,153,0.16)"
+                  : "1px solid rgba(248,113,113,0.16)",
               }}
             >
-              ● 読み取り専用
+              {aiStatus === null
+                ? "○ AI接続確認中"
+                : aiStatus.available
+                  ? `● 接続済み ${aiStatus.model}`
+                  : "● AIオフライン"}
+            </span>
+
+            <span
+              style={{
+                padding: "7px 12px",
+                borderRadius: 999,
+                background: "rgba(52,211,153,0.08)",
+                color: "#86efac",
+                fontSize: 12,
+                border: "1px solid rgba(52,211,153,0.12)",
+              }}
+            >
+              読み取り専用
             </span>
           </div>
         </div>
