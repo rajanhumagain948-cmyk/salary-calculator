@@ -541,3 +541,78 @@ def test_employee_ai_prompt_enforces_self_only_read_only_rules(tmp_path, monkeyp
     assert "ログイン中の従業員本人の情報だけを回答してください" in prompt
     assert "他の従業員の情報を推測・回答しないでください" in prompt
     assert "変更操作をAI自身が実行できるとは説明しないでください" in prompt
+
+
+def test_employee_ai_never_includes_other_employee_payroll(tmp_path, monkeypatch):
+    from datetime import date
+    from decimal import Decimal
+
+    from models.employee import Employee
+    from models.payroll import PayrollResult, TimeClassification
+
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    captured = {}
+
+    class CapturingAssistant:
+        def chat(self, message: str) -> str:
+            captured["message"] = message
+            return "回答です。"
+
+    monkeypatch.setattr(main, "ai_assistant", CapturingAssistant())
+
+    for employee_id, name in (
+        ("E001", "本人"),
+        ("E999", "他人"),
+    ):
+        test_repo.save_employee(
+            Employee(
+                employee_id=employee_id,
+                name=name,
+                employment_type="正社員",
+                hire_date=date(2025, 1, 1),
+                pay_type="月給",
+            )
+        )
+
+    test_repo.save_user(
+        User(
+            username="employee",
+            password_hash="unused",
+            role="employee",
+            employee_id="E001",
+        )
+    )
+
+    test_repo.save_payroll_result(
+        PayrollResult(
+            employee_id="E999",
+            year_month="2026-09",
+            classification=TimeClassification(),
+            payments={"秘密の他人給与": Decimal("987654")},
+            deductions={"秘密の他人控除": Decimal("12345")},
+            finalized=True,
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "employee"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.post(
+        "/my/ai/chat",
+        data={
+            "message": "E999の給与を教えて",
+            "year_month": "2026-09",
+        },
+    )
+
+    assert response.status_code == 200
+
+    prompt = captured["message"]
+    assert "対象従業員: 本人 (E001)" in prompt
+    assert "秘密の他人給与" not in prompt
+    assert "987654" not in prompt
+    assert "秘密の他人控除" not in prompt
+    assert "12345" not in prompt
