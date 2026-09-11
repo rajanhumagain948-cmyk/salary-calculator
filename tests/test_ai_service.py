@@ -140,3 +140,29 @@ def test_ollama_assistant_uses_default_timeout_for_zero_environment(monkeypatch)
     assistant = OllamaAssistant.from_env()
 
     assert assistant.timeout_seconds == 60
+
+
+def test_ollama_assistant_uses_configured_timeout_for_chat(monkeypatch):
+    assistant = OllamaAssistant(timeout_seconds=30)
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return None
+
+        def read(self):
+            return b'{"message":{"role":"assistant","content":"OK"}}'
+
+    def fake_urlopen(request, timeout):
+        assert request.full_url == "http://localhost:11434/api/chat"
+        assert timeout == 30
+        return FakeResponse()
+
+    monkeypatch.setattr(
+        "services.ai_service.urlopen",
+        fake_urlopen,
+    )
+
+    assert assistant.chat("接続確認") == "OK"
