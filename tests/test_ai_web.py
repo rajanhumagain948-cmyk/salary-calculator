@@ -110,6 +110,8 @@ def test_ai_chat_receives_monthly_company_summary(tmp_path, monkeypatch):
             employee_id="E1",
             year_month="2026-09",
             classification=TimeClassification(),
+            payments={"基本給": Decimal("987654")},
+            deductions={"所得税": Decimal("12345")},
             finalized=True,
         )
     )
@@ -148,6 +150,8 @@ def test_ai_chat_receives_monthly_company_summary(tmp_path, monkeypatch):
     assert "給与確定済み件数: 1" in prompt
     assert "有給申請中件数: 1" in prompt
     assert "9月の状況を教えて" in prompt
+    assert "987654" not in prompt
+    assert "12345" not in prompt
 
 
 def test_ai_chat_rejects_invalid_year_month(tmp_path, monkeypatch):
