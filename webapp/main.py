@@ -363,7 +363,13 @@ def my_ai_chat(
         f"質問: {message}"
     )
 
-    answer = ai_assistant.chat(prompt)
+    try:
+        answer = ai_assistant.chat(prompt)
+    except (ConnectionError, TimeoutError, URLError) as error:
+        raise HTTPException(
+            status_code=503,
+            detail="AIアシスタントに接続できません。",
+        ) from error
 
     return {"answer": answer}
 

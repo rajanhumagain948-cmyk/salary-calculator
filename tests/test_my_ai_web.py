@@ -616,3 +616,51 @@ def test_employee_ai_never_includes_other_employee_payroll(tmp_path, monkeypatch
     assert "987654" not in prompt
     assert "秘密の他人控除" not in prompt
     assert "12345" not in prompt
+
+
+def test_employee_ai_returns_503_when_assistant_is_unavailable(
+    tmp_path,
+    monkeypatch,
+):
+    from datetime import date
+
+    from models.employee import Employee
+
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    class UnavailableAssistant:
+        def chat(self, message: str) -> str:
+            raise ConnectionError("Ollama is unavailable")
+
+    monkeypatch.setattr(main, "ai_assistant", UnavailableAssistant())
+
+    test_repo.save_employee(
+        Employee(
+            employee_id="E001",
+            name="本人",
+            employment_type="正社員",
+            hire_date=date(2025, 1, 1),
+            pay_type="月給",
+        )
+    )
+    test_repo.save_user(
+        User(
+            username="employee",
+            password_hash="unused",
+            role="employee",
+            employee_id="E001",
+        )
+    )
+
+    client = TestClient(main.app, raise_server_exceptions=False)
+    token = main.serializer.dumps({"username": "employee"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.post(
+        "/my/ai/chat",
+        data={"message": "今月の勤怠を教えて"},
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "AIアシスタントに接続できません。"
