@@ -213,6 +213,12 @@ def ai_chat(
             detail="message is required",
         )
 
+    if len(message) > 2000:
+        raise HTTPException(
+            status_code=400,
+            detail="message must be 2000 characters or fewer",
+        )
+
     conversation = []
 
     if history:
