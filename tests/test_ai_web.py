@@ -543,6 +543,7 @@ def test_ai_chat_adds_referenced_employee_leave_balance(tmp_path, monkeypatch):
         LeaveRequest(
             employee_id="E001",
             leave_date=date(2026, 9, 15),
+            reason="通院のため・AIには送らない",
             status="申請中",
             leave_unit="全日",
         )
@@ -755,6 +756,7 @@ def test_ai_chat_adds_pending_leave_review_people(tmp_path, monkeypatch):
     assert "E001 / 山田太郎" in prompt
     assert "2026-09-15" in prompt
     assert "全日" in prompt
+    assert "通院のため・AIには送らない" not in prompt
 
 
 def test_ai_chat_keeps_employee_context_from_history(tmp_path, monkeypatch):
