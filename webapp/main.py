@@ -359,7 +359,8 @@ def ai_chat(
                     "answer": (
                         f"「{employee_name}」に一致する従業員が複数います。"
                         f"社員番号 {employee_ids} を指定してください。"
-                    )
+                    ),
+                    "sources": [],
                 }
 
         referenced_employee = find_referenced_employee(

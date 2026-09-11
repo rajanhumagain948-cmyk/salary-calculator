@@ -622,6 +622,7 @@ def test_ai_chat_asks_for_employee_id_when_name_is_ambiguous(
         "「ホムガイ」に一致する従業員が複数います。"
         "社員番号 W250651 または W250652 を指定してください。"
     )
+    assert response.json()["sources"] == []
 
 
 def test_ai_chat_adds_payroll_review_people(tmp_path, monkeypatch):
