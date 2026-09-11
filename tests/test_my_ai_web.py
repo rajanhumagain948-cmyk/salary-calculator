@@ -391,3 +391,5 @@ def test_employee_ai_receives_finalized_payroll_amounts(tmp_path, monkeypatch):
     assert "総支給: 200000円" in prompt
     assert "控除合計: 5000円" in prompt
     assert "手取り: 195000円" in prompt
+    assert "支給内訳: 基本給=200000円" in prompt
+    assert "控除内訳: 所得税=5000円" in prompt
