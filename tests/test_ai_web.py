@@ -979,3 +979,35 @@ def test_ai_chat_returns_503_when_assistant_times_out(tmp_path, monkeypatch):
 
     assert response.status_code == 503
     assert response.json()["detail"] == "AIアシスタントに接続できません。"
+
+
+def test_employee_cannot_view_ai_status(tmp_path, monkeypatch):
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    class StatusAssistant:
+        model = "qwen3:8b"
+        base_url = "http://localhost:11434"
+
+        def is_available(self):
+            raise AssertionError("status must not be checked for employee")
+
+    monkeypatch.setattr(main, "ai_assistant", StatusAssistant())
+
+    test_repo.save_user(
+        User(
+            username="employee",
+            password_hash="unused",
+            role="employee",
+            employee_id="E001",
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "employee"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.get("/ai/status")
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "admin only"
