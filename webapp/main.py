@@ -244,6 +244,41 @@ def my_ai_chat(
             detail="message must be 2000 characters or fewer",
         )
 
+    conversation = []
+
+    if history:
+        try:
+            parsed_history = json.loads(history)
+        except json.JSONDecodeError as error:
+            raise HTTPException(
+                status_code=400,
+                detail="invalid AI chat history",
+            ) from error
+
+        if not isinstance(parsed_history, list):
+            raise HTTPException(
+                status_code=400,
+                detail="invalid AI chat history",
+            )
+
+        for item in parsed_history:
+            if (
+                not isinstance(item, dict)
+                or item.get("role") not in ("user", "assistant")
+                or not isinstance(item.get("content"), str)
+            ):
+                raise HTTPException(
+                    status_code=400,
+                    detail="invalid AI chat history",
+                )
+
+            conversation.append(
+                {
+                    "role": item["role"],
+                    "content": item["content"],
+                }
+            )
+
     if year_month:
         year_month = normalize_input(year_month)
 
@@ -385,25 +420,6 @@ def my_ai_chat(
         f"{leave_context}"
         f"質問: {message}"
     )
-
-    conversation = []
-
-    if history:
-        try:
-            parsed_history = json.loads(history)
-        except json.JSONDecodeError as error:
-            raise HTTPException(
-                status_code=400,
-                detail="invalid AI chat history",
-            ) from error
-
-        if not isinstance(parsed_history, list):
-            raise HTTPException(
-                status_code=400,
-                detail="invalid AI chat history",
-            )
-
-        conversation.extend(parsed_history)
 
     conversation.append(
         {
