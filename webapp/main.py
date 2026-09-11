@@ -194,6 +194,28 @@ def ai_status(request: Request):
     }
 
 
+@app.get("/my/ai/status")
+def my_ai_status(request: Request):
+    user = require_user(request)
+
+    if user.role != "employee":
+        raise HTTPException(status_code=403, detail="employee only")
+
+    if not user.employee_id:
+        raise HTTPException(status_code=400, detail="employee_id not set")
+
+    base_url = ai_assistant.base_url
+
+    return {
+        "model": ai_assistant.model,
+        "local": (
+            base_url.startswith("http://localhost:")
+            or base_url.startswith("http://127.0.0.1:")
+        ),
+        "available": ai_assistant.is_available(),
+    }
+
+
 @app.post("/my/ai/chat")
 def my_ai_chat(
     request: Request,

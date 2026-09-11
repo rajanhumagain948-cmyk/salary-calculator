@@ -737,3 +737,39 @@ def test_employee_ai_records_safe_success_audit(tmp_path, monkeypatch):
     serialized = " ".join(logs[0])
     assert "保存しない秘密の質問" not in serialized
     assert "秘密のAI回答" not in serialized
+
+
+def test_employee_can_view_employee_ai_status(tmp_path, monkeypatch):
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    class StatusAssistant:
+        model = "qwen3:8b"
+        base_url = "http://localhost:11434"
+
+        def is_available(self):
+            return True
+
+    monkeypatch.setattr(main, "ai_assistant", StatusAssistant())
+
+    test_repo.save_user(
+        User(
+            username="employee",
+            password_hash="unused",
+            role="employee",
+            employee_id="E001",
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "employee"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.get("/my/ai/status")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "model": "qwen3:8b",
+        "local": True,
+        "available": True,
+    }
