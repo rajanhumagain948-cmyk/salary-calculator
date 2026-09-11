@@ -207,6 +207,13 @@ def my_ai_chat(
     if not user.employee_id:
         raise HTTPException(status_code=400, detail="employee_id not set")
 
+    message = normalize_input(message)
+    if not message:
+        raise HTTPException(
+            status_code=400,
+            detail="message is required",
+        )
+
     employee_id = normalize_input(user.employee_id)
     employee = next(
         (
