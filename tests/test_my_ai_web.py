@@ -773,3 +773,25 @@ def test_employee_can_view_employee_ai_status(tmp_path, monkeypatch):
         "local": True,
         "available": True,
     }
+
+
+def test_admin_cannot_view_employee_ai_status(tmp_path, monkeypatch):
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    test_repo.save_user(
+        User(
+            username="admin",
+            password_hash="unused",
+            role="admin",
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "admin"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.get("/my/ai/status")
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "employee only"
