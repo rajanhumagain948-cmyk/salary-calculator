@@ -133,3 +133,35 @@ def test_employee_ai_rejects_empty_message(tmp_path, monkeypatch):
 
     assert response.status_code == 400
     assert response.json()["detail"] == "message is required"
+
+
+def test_employee_ai_rejects_message_over_2000_characters(tmp_path, monkeypatch):
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    class ShouldNotCallAssistant:
+        def chat(self, message: str) -> str:
+            raise AssertionError("AI must not be called for oversized message")
+
+    monkeypatch.setattr(main, "ai_assistant", ShouldNotCallAssistant())
+
+    test_repo.save_user(
+        User(
+            username="employee",
+            password_hash="unused",
+            role="employee",
+            employee_id="E001",
+        )
+    )
+
+    client = TestClient(main.app, raise_server_exceptions=False)
+    token = main.serializer.dumps({"username": "employee"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.post(
+        "/my/ai/chat",
+        data={"message": "あ" * 2001},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "message must be 2000 characters or fewer"

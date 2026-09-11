@@ -214,6 +214,12 @@ def my_ai_chat(
             detail="message is required",
         )
 
+    if len(message) > 2000:
+        raise HTTPException(
+            status_code=400,
+            detail="message must be 2000 characters or fewer",
+        )
+
     employee_id = normalize_input(user.employee_id)
     employee = next(
         (
