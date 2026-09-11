@@ -534,7 +534,7 @@ def ai_chat(
             answer = ai_assistant.chat_messages(conversation)
         else:
             answer = ai_assistant.chat(prompt)
-    except (ConnectionError, URLError) as error:
+    except (ConnectionError, TimeoutError, URLError) as error:
         repo.audit(
             "AIアシスタント利用",
             user.username,
