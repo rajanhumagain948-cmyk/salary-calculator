@@ -664,3 +664,63 @@ def test_employee_ai_returns_503_when_assistant_is_unavailable(
 
     assert response.status_code == 503
     assert response.json()["detail"] == "AIアシスタントに接続できません。"
+
+
+def test_employee_ai_records_safe_success_audit(tmp_path, monkeypatch):
+    from datetime import date
+
+    from models.employee import Employee
+
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    class AuditAssistant:
+        def chat(self, message: str) -> str:
+            return "秘密のAI回答"
+
+    monkeypatch.setattr(main, "ai_assistant", AuditAssistant())
+
+    test_repo.save_employee(
+        Employee(
+            employee_id="E001",
+            name="本人",
+            employment_type="正社員",
+            hire_date=date(2025, 1, 1),
+            pay_type="月給",
+        )
+    )
+    test_repo.save_user(
+        User(
+            username="employee",
+            password_hash="unused",
+            role="employee",
+            employee_id="E001",
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "employee"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.post(
+        "/my/ai/chat",
+        data={
+            "message": "保存しない秘密の質問",
+            "year_month": "2026-09",
+        },
+    )
+
+    assert response.status_code == 200
+
+    logs = [
+        row
+        for row in test_repo.recent_audit()
+        if row[1] == "従業員AIアシスタント利用"
+    ]
+    assert len(logs) == 1
+    assert logs[0][2] == "employee"
+    assert logs[0][3] == "対象月=2026-09 結果=成功"
+
+    serialized = " ".join(logs[0])
+    assert "保存しない秘密の質問" not in serialized
+    assert "秘密のAI回答" not in serialized

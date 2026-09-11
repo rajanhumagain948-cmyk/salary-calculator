@@ -371,6 +371,12 @@ def my_ai_chat(
             detail="AIアシスタントに接続できません。",
         ) from error
 
+    repo.audit(
+        "従業員AIアシスタント利用",
+        user.username,
+        f"対象月={year_month or '未指定'} 結果=成功",
+    )
+
     return {"answer": answer}
 
 
