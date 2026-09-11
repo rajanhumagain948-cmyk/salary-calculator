@@ -254,10 +254,29 @@ def my_ai_chat(
     if employee is None:
         raise HTTPException(status_code=404, detail="employee not found")
 
+    attendance_context = ""
+
+    if year_month:
+        attendance = build_employee_attendance_summary(
+            employee_id=employee.employee_id,
+            employee_name=employee.name,
+            year_month=year_month,
+            records=repo.work_records(
+                employee.employee_id,
+                year_month,
+            ),
+        )
+        attendance_context = (
+            f"対象月: {year_month}\n"
+            f"勤怠記録件数: {attendance['record_count']}\n"
+            f"出勤日数: {attendance['attendance_days']}\n"
+        )
+
     prompt = (
         "以下はログイン中の従業員本人向けの読み取り専用AIです。\n"
         f"対象従業員: {employee.name} ({employee.employee_id})\n"
-        f"質問: {normalize_input(message)}"
+        f"{attendance_context}"
+        f"質問: {message}"
     )
 
     answer = ai_assistant.chat(prompt)
