@@ -404,3 +404,83 @@ def test_employee_ai_receives_finalized_payroll_amounts(tmp_path, monkeypatch):
     assert "深夜: 1時間00分" in prompt
     assert "休日: 7時間00分" in prompt
     assert "月60時間超: 0時間30分" in prompt
+
+
+def test_employee_ai_receives_own_leave_balance(tmp_path, monkeypatch):
+    from datetime import date
+    from decimal import Decimal
+
+    from models.employee import Employee
+    from models.employment import EmploymentTerms
+    from models.leave_grant import LeaveGrant
+    from models.leave_request import LeaveRequest
+
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    captured = {}
+
+    class CapturingAssistant:
+        def chat(self, message: str) -> str:
+            captured["message"] = message
+            return "有給を回答しました。"
+
+    monkeypatch.setattr(main, "ai_assistant", CapturingAssistant())
+
+    test_repo.save_employee(
+        Employee(
+            employee_id="E001",
+            name="山田太郎",
+            employment_type="正社員",
+            hire_date=date(2025, 1, 1),
+            pay_type="月給",
+        )
+    )
+    test_repo.save_user(
+        User(
+            username="employee",
+            password_hash="unused",
+            role="employee",
+            employee_id="E001",
+        )
+    )
+    test_repo.save_terms(
+        EmploymentTerms(
+            "E001",
+            standard_daily_minutes=480,
+        )
+    )
+    test_repo.save_leave_grant(
+        LeaveGrant(
+            employee_id="E001",
+            grant_date=date(2026, 1, 1),
+            granted_days=Decimal("10"),
+            expires_on=date(2027, 12, 31),
+        )
+    )
+    test_repo.save_leave_request(
+        LeaveRequest(
+            employee_id="E001",
+            leave_date=date(2026, 9, 15),
+            status="申請中",
+            leave_unit="全日",
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "employee"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.post(
+        "/my/ai/chat",
+        data={
+            "message": "有給はあと何日？",
+            "year_month": "2026-09",
+        },
+    )
+
+    assert response.status_code == 200
+    prompt = captured["message"]
+    assert "有給残日数: 10" in prompt
+    assert "有給申請中日数: 1" in prompt
+    assert "有給申請可能日数: 9" in prompt

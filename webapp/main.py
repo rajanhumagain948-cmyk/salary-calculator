@@ -256,6 +256,7 @@ def my_ai_chat(
 
     attendance_context = ""
     payroll_context = ""
+    leave_context = ""
 
     if year_month:
         attendance = build_employee_attendance_summary(
@@ -271,6 +272,24 @@ def my_ai_chat(
             f"対象月: {year_month}\n"
             f"勤怠記録件数: {attendance['record_count']}\n"
             f"出勤日数: {attendance['attendance_days']}\n"
+        )
+
+        year = parsed_year_month.year
+        month = parsed_year_month.month
+        month_end = date(
+            year,
+            month,
+            calendar.monthrange(year, month)[1],
+        )
+        leave_balance = calculate_leave_balance(
+            repo,
+            employee.employee_id,
+            month_end,
+        )
+        leave_context = (
+            f"有給残日数: {leave_balance.remaining_days}\n"
+            f"有給申請中日数: {leave_balance.pending_days}\n"
+            f"有給申請可能日数: {leave_balance.available_days}\n"
         )
 
         payroll = repo.payroll_result(
@@ -318,6 +337,7 @@ def my_ai_chat(
         f"対象従業員: {employee.name} ({employee.employee_id})\n"
         f"{attendance_context}"
         f"{payroll_context}"
+        f"{leave_context}"
         f"質問: {message}"
     )
 
