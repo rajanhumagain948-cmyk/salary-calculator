@@ -279,6 +279,18 @@ def my_ai_chat(
         )
         if payroll is not None and not payroll.finalized:
             payroll_context = "未確定給与は参照できません。\n"
+        elif payroll is not None and payroll.finalized:
+            payroll_status = build_employee_payroll_summary(
+                employee_id=employee.employee_id,
+                year_month=year_month,
+                payroll=payroll,
+            )
+            payroll_context = (
+                "給与確定済み: はい\n"
+                f"総支給: {payroll_status['gross_pay']}円\n"
+                f"控除合計: {payroll_status['total_deductions']}円\n"
+                f"手取り: {payroll_status['net_pay']}円\n"
+            )
 
     prompt = (
         "以下はログイン中の従業員本人向けの読み取り専用AIです。\n"
