@@ -206,7 +206,7 @@ def test_ai_chat_returns_503_when_assistant_is_unavailable(
 
     response = client.post(
         "/ai/chat",
-        data={"message": "給与状況を教えて"},
+        data={"message": "失敗時にも保存しない秘密の質問"},
     )
 
     assert response.status_code == 503
@@ -220,6 +220,9 @@ def test_ai_chat_returns_503_when_assistant_is_unavailable(
     assert len(ai_logs) == 1
     assert ai_logs[0][2] == "admin"
     assert ai_logs[0][3] == "対象月=未指定 結果=失敗"
+
+    serialized = " ".join(ai_logs[0])
+    assert "保存しない秘密の質問" not in serialized
 
 
 def test_ai_chat_passes_valid_conversation_history(tmp_path, monkeypatch):
