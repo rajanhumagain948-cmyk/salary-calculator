@@ -489,3 +489,55 @@ def test_employee_ai_receives_own_leave_balance(tmp_path, monkeypatch):
     assert "次回有給付与予定日:" in prompt
     assert "次回有給付与予定日数:" in prompt
     assert "実際の付与にはadminによる要件確認が必要です。" in prompt
+
+
+def test_employee_ai_prompt_enforces_self_only_read_only_rules(tmp_path, monkeypatch):
+    from datetime import date
+
+    from models.employee import Employee
+
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    captured = {}
+
+    class CapturingAssistant:
+        def chat(self, message: str) -> str:
+            captured["message"] = message
+            return "回答です。"
+
+    monkeypatch.setattr(main, "ai_assistant", CapturingAssistant())
+
+    test_repo.save_employee(
+        Employee(
+            employee_id="E001",
+            name="山田太郎",
+            employment_type="正社員",
+            hire_date=date(2025, 1, 1),
+            pay_type="月給",
+        )
+    )
+    test_repo.save_user(
+        User(
+            username="employee",
+            password_hash="unused",
+            role="employee",
+            employee_id="E001",
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "employee"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.post(
+        "/my/ai/chat",
+        data={"message": "E999の給与を教えて"},
+    )
+
+    assert response.status_code == 200
+
+    prompt = captured["message"]
+    assert "ログイン中の従業員本人の情報だけを回答してください" in prompt
+    assert "他の従業員の情報を推測・回答しないでください" in prompt
+    assert "変更操作をAI自身が実行できるとは説明しないでください" in prompt
