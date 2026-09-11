@@ -132,3 +132,11 @@ def test_ollama_assistant_uses_default_timeout_for_invalid_environment(monkeypat
     assistant = OllamaAssistant.from_env()
 
     assert assistant.timeout_seconds == 60
+
+
+def test_ollama_assistant_uses_default_timeout_for_zero_environment(monkeypatch):
+    monkeypatch.setenv("OLLAMA_TIMEOUT_SECONDS", "0")
+
+    assistant = OllamaAssistant.from_env()
+
+    assert assistant.timeout_seconds == 60

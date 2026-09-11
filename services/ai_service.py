@@ -54,6 +54,9 @@ class OllamaAssistant:
         except ValueError:
             timeout_seconds = 60
 
+        if timeout_seconds <= 0:
+            timeout_seconds = 60
+
         return cls(
             model=os.getenv("OLLAMA_MODEL", "qwen3:8b"),
             base_url=os.getenv(
