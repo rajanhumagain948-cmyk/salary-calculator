@@ -161,6 +161,16 @@ export default function MyAiPage() {
             aria-label="AIへの質問"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
+            onKeyDown={(e) => {
+              if (
+                e.key === "Enter" &&
+                !e.shiftKey &&
+                !e.nativeEvent.isComposing
+              ) {
+                e.preventDefault();
+                e.currentTarget.form?.requestSubmit();
+              }
+            }}
             placeholder="自分の給与・勤怠・有給について質問してください..."
             rows={3}
             style={{ width: "100%", padding: 12 }}
