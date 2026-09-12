@@ -362,10 +362,27 @@ def my_ai_chat(
         except ValueError:
             next_grant = None
 
+        pending_leave_requests = [
+            item
+            for item in repo.leave_requests(employee.employee_id)
+            if item.status == "申請中"
+            and item.leave_date.strftime("%Y-%m") == year_month
+        ]
+        if pending_leave_requests:
+            pending_leave_lines = ["申請中の有給:"]
+            for item in pending_leave_requests:
+                pending_leave_lines.append(
+                    f"- {item.leave_date.isoformat()} | {item.leave_unit}"
+                )
+            pending_leave_context = "\n".join(pending_leave_lines) + "\n"
+        else:
+            pending_leave_context = "申請中の有給: なし\n"
+
         leave_context = (
             f"有給残日数: {leave_balance.remaining_days}\n"
             f"有給申請中日数: {leave_balance.pending_days}\n"
             f"有給申請可能日数: {leave_balance.available_days}\n"
+            + pending_leave_context
             + (
                 f"次回有給付与予定日: {next_grant.grant_date.isoformat()}\n"
                 f"次回有給付与予定日数: {next_grant.days}\n"

@@ -1007,3 +1007,71 @@ def test_employee_ai_rejects_oversized_history_content(tmp_path, monkeypatch):
 
     assert response.status_code == 400
     assert response.json()["detail"] == "invalid AI chat history"
+
+
+def test_employee_ai_receives_own_pending_leave_without_reason(
+    tmp_path,
+    monkeypatch,
+):
+    from datetime import date
+
+    from models.employee import Employee
+    from models.leave_request import LeaveRequest
+
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    captured = {}
+
+    class CapturingAssistant:
+        def chat(self, message: str) -> str:
+            captured["message"] = message
+            return "回答です。"
+
+    monkeypatch.setattr(main, "ai_assistant", CapturingAssistant())
+
+    test_repo.save_employee(
+        Employee(
+            employee_id="E001",
+            name="本人",
+            employment_type="正社員",
+            hire_date=date(2025, 1, 1),
+            pay_type="月給",
+        )
+    )
+    test_repo.save_user(
+        User(
+            username="employee",
+            password_hash="unused",
+            role="employee",
+            employee_id="E001",
+        )
+    )
+    test_repo.save_leave_request(
+        LeaveRequest(
+            employee_id="E001",
+            leave_date=date(2026, 9, 15),
+            reason="通院のため・AIには送らない",
+            status="申請中",
+            leave_unit="全日",
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "employee"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.post(
+        "/my/ai/chat",
+        data={
+            "message": "申請中の有給は？",
+            "year_month": "2026-09",
+        },
+    )
+
+    assert response.status_code == 200
+    prompt = captured["message"]
+    assert "申請中の有給:" in prompt
+    assert "2026-09-15" in prompt
+    assert "全日" in prompt
+    assert "通院のため・AIには送らない" not in prompt
