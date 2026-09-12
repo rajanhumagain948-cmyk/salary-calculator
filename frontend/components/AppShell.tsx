@@ -25,7 +25,7 @@ const employeeNav = [
   { href: "/shifts", label: "自分のシフト", icon: "▦", enabled: true },
   { href: "/payslips", label: "給与明細", icon: "¥", enabled: true },
   { href: "/my-leave", label: "有給休暇", icon: "◇", enabled: true },
-  { href: "/ai", label: "AIアシスタント", icon: "✦", enabled: false },
+  { href: "/my-ai", label: "AIアシスタント", icon: "✦", enabled: true },
 ];
 
 export default function AppShell({ children }: Props) {
