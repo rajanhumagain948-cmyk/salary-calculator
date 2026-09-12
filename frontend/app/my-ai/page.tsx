@@ -14,7 +14,13 @@ function currentYearMonth() {
 export default function MyAiPage() {
   const [yearMonth, setYearMonth] = useState(currentYearMonth);
   const [message, setMessage] = useState("");
-  const [answer, setAnswer] = useState("");
+  const [messages, setMessages] = useState<
+    {
+      role: "user" | "assistant";
+      content: string;
+      sources?: string[];
+    }[]
+  >([]);
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
   const [aiStatus, setAiStatus] = useState<{
@@ -55,6 +61,17 @@ export default function MyAiPage() {
       form.append("message", question);
       form.append("year_month", yearMonth);
 
+      if (messages.length > 0) {
+        form.append(
+          "history",
+          JSON.stringify(
+            messages
+              .slice(-20)
+              .map(({ role, content }) => ({ role, content }))
+          )
+        );
+      }
+
       const res = await fetch(`${API_BASE}/my/ai/chat`, {
         method: "POST",
         credentials: "include",
@@ -71,7 +88,15 @@ export default function MyAiPage() {
         return;
       }
 
-      setAnswer(data.answer ?? "");
+      setMessages((current) => [
+        ...current,
+        { role: "user", content: question },
+        {
+          role: "assistant",
+          content: data.answer ?? "",
+          sources: Array.isArray(data.sources) ? data.sources : [],
+        },
+      ]);
       setMessage("");
     } catch {
       setError("AIとの通信中にエラーが発生しました。");
@@ -152,18 +177,41 @@ export default function MyAiPage() {
 
         {error && <p style={{ color: "#ff9d9d" }}>{error}</p>}
 
-        {answer && (
+        {messages.length > 0 && (
           <div
             style={{
+              display: "grid",
+              gap: 12,
               marginTop: 24,
-              padding: 16,
-              border: "1px solid rgba(148,180,216,0.16)",
-              borderRadius: 14,
-              whiteSpace: "pre-wrap",
-              lineHeight: 1.7,
             }}
           >
-            {answer}
+            {messages.map((item, index) => (
+              <div
+                key={`${item.role}-${index}`}
+                style={{
+                  marginLeft: item.role === "user" ? "15%" : 0,
+                  marginRight: item.role === "assistant" ? "15%" : 0,
+                  padding: 16,
+                  border: "1px solid rgba(148,180,216,0.16)",
+                  borderRadius: 14,
+                  whiteSpace: "pre-wrap",
+                  lineHeight: 1.7,
+                }}
+              >
+                <strong>
+                  {item.role === "user" ? "YOU" : "LOCAL AI"}
+                </strong>
+                <div>{item.content}</div>
+
+                {item.role === "assistant" &&
+                  item.sources &&
+                  item.sources.length > 0 && (
+                    <div style={{ marginTop: 10, color: "#8fa6bf" }}>
+                      参照: {item.sources.join(" / ")}
+                    </div>
+                  )}
+              </div>
+            ))}
           </div>
         )}
       </main>
