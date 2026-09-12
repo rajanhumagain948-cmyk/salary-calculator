@@ -47,10 +47,8 @@ export default function MyAiPage() {
     void loadAiStatus();
   }, []);
 
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-
-    const question = message.trim();
+  async function sendQuestion(rawQuestion: string) {
+    const question = rawQuestion.trim();
     if (!question || sending) return;
 
     setSending(true);
@@ -105,6 +103,11 @@ export default function MyAiPage() {
     }
   }
 
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    await sendQuestion(message);
+  }
+
   return (
     <AuthGuard allow={["employee"]}>
       <main style={{ maxWidth: 900, margin: "0 auto", padding: "28px 16px" }}>
@@ -143,6 +146,31 @@ export default function MyAiPage() {
             : aiStatus.available
               ? `● 接続済み ${aiStatus.model}`
               : "● AIオフライン"}
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 8,
+            marginBottom: 18,
+          }}
+        >
+          {[
+            "今月の勤務日数は？",
+            "今月の手取りはいくら？",
+            "有給はあと何日？",
+          ].map((question) => (
+            <button
+              key={question}
+              type="button"
+              disabled={sending}
+              onClick={() => void sendQuestion(question)}
+              style={{ padding: "8px 12px" }}
+            >
+              {question}
+            </button>
+          ))}
         </div>
 
         <form onSubmit={submit}>
