@@ -267,6 +267,7 @@ def my_ai_chat(
                 or item.get("role") not in ("user", "assistant")
                 or not isinstance(item.get("content"), str)
                 or not item["content"].strip()
+                or len(item["content"].strip()) > 2000
             ):
                 raise HTTPException(
                     status_code=400,

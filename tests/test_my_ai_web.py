@@ -964,3 +964,37 @@ def test_employee_ai_rejects_empty_history_content(tmp_path, monkeypatch):
 
     assert response.status_code == 400
     assert response.json()["detail"] == "invalid AI chat history"
+
+
+def test_employee_ai_rejects_oversized_history_content(tmp_path, monkeypatch):
+    import json
+
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    test_repo.save_user(
+        User(
+            username="employee",
+            password_hash="unused",
+            role="employee",
+            employee_id="E001",
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "employee"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.post(
+        "/my/ai/chat",
+        data={
+            "message": "続けて教えて",
+            "history": json.dumps(
+                [{"role": "user", "content": "あ" * 2001}],
+                ensure_ascii=False,
+            ),
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "invalid AI chat history"
