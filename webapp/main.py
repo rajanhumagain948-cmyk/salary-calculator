@@ -317,8 +317,16 @@ def my_ai_chat(
     attendance_context = ""
     payroll_context = ""
     leave_context = ""
+    sources = []
 
     if year_month:
+        sources.extend(
+            [
+                "本人の勤怠",
+                "本人の有給残数",
+            ]
+        )
+
         attendance = build_employee_attendance_summary(
             employee_id=employee.employee_id,
             employee_name=employee.name,
@@ -374,6 +382,7 @@ def my_ai_chat(
         if payroll is not None and not payroll.finalized:
             payroll_context = "未確定給与は参照できません。\n"
         elif payroll is not None and payroll.finalized:
+            sources.insert(1, "本人の給与明細")
             payroll_status = build_employee_payroll_summary(
                 employee_id=employee.employee_id,
                 year_month=year_month,
@@ -452,7 +461,10 @@ def my_ai_chat(
         f"対象月={year_month or '未指定'} 結果=成功",
     )
 
-    return {"answer": answer}
+    return {
+        "answer": answer,
+        "sources": sources,
+    }
 
 
 @app.post("/ai/chat")

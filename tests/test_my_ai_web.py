@@ -392,6 +392,11 @@ def test_employee_ai_receives_finalized_payroll_amounts(tmp_path, monkeypatch):
     )
 
     assert response.status_code == 200
+    assert response.json()["sources"] == [
+        "本人の勤怠",
+        "本人の給与明細",
+        "本人の有給残数",
+    ]
     prompt = captured["message"]
     assert "給与確定済み: はい" in prompt
     assert "総支給: 200000円" in prompt
