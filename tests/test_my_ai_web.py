@@ -549,6 +549,7 @@ def test_employee_ai_prompt_enforces_self_only_read_only_rules(tmp_path, monkeyp
     prompt = captured["message"]
     assert "ログイン中の従業員本人の情報だけを回答してください" in prompt
     assert "他の従業員の情報を推測・回答しないでください" in prompt
+    assert "未確定給与は従業員には開示しないでください" in prompt
     assert "変更操作をAI自身が実行できるとは説明しないでください" in prompt
 
 
