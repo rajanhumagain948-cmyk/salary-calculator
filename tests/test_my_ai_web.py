@@ -320,6 +320,10 @@ def test_employee_ai_does_not_receive_unfinalized_payroll(tmp_path, monkeypatch)
     )
 
     assert response.status_code == 200
+    assert response.json()["sources"] == [
+        "本人の勤怠",
+        "本人の有給残数",
+    ]
     prompt = captured["message"]
     assert "987654" not in prompt
     assert "12345" not in prompt
