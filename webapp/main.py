@@ -266,6 +266,7 @@ def my_ai_chat(
                 not isinstance(item, dict)
                 or item.get("role") not in ("user", "assistant")
                 or not isinstance(item.get("content"), str)
+                or not item["content"].strip()
             ):
                 raise HTTPException(
                     status_code=400,
@@ -275,7 +276,7 @@ def my_ai_chat(
             conversation.append(
                 {
                     "role": item["role"],
-                    "content": item["content"],
+                    "content": item["content"].strip(),
                 }
             )
 
