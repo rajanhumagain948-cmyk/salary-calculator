@@ -52,3 +52,29 @@ def build_overtime_forecast(
         "future_confirmed_shift_days": future_confirmed_shift_days,
         "forecast_overtime_minutes": forecast_overtime_minutes,
     }
+
+
+def build_attendance_review(
+    *,
+    records: list[WorkRecord],
+) -> dict[str, Any]:
+    from services.attendance_service import validate_work_record
+
+    warnings = []
+
+    for record in records:
+        messages = validate_work_record(record)
+        if not messages:
+            continue
+
+        warnings.append(
+            {
+                "work_date": record.work_date.isoformat(),
+                "messages": messages,
+            }
+        )
+
+    return {
+        "warning_count": len(warnings),
+        "warnings": warnings,
+    }

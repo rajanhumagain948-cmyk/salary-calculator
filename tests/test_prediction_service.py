@@ -205,3 +205,27 @@ def test_overtime_forecast_counts_confirmed_shift_dates_once():
 
     assert forecast["future_confirmed_shift_days"] == 1
     assert forecast["forecast_overtime_minutes"] == 120
+
+
+def test_attendance_review_finds_existing_attendance_warnings():
+    from services.prediction_service import build_attendance_review
+
+    records = [
+        WorkRecord(
+            employee_id="E001",
+            work_date=date(2026, 9, 1),
+            start_minute=9 * 60,
+            end_minute=18 * 60,
+            break_total_minutes=0,
+        )
+    ]
+
+    review = build_attendance_review(records=records)
+
+    assert review["warning_count"] == 1
+    assert review["warnings"] == [
+        {
+            "work_date": "2026-09-01",
+            "messages": ["休憩が法定目安より60分不足しています。"],
+        }
+    ]
