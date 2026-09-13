@@ -89,13 +89,24 @@ def build_payroll_estimate(
     transport,
     other_deductions,
     year_month: str,
+    as_of: date | None = None,
 ) -> dict[str, Any]:
     from services.payroll_service import calculate_payroll
+
+    estimate_records = (
+        [
+            record
+            for record in records
+            if record.work_date <= as_of
+        ]
+        if as_of is not None
+        else records
+    )
 
     result = calculate_payroll(
         employee=employee,
         terms=terms,
-        records=records,
+        records=estimate_records,
         allowances=allowances,
         transport=transport,
         other_deductions=other_deductions,
