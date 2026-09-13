@@ -33,6 +33,7 @@ export default function PredictionsPage() {
   const [asOf, setAsOf] = useState(today);
   const [items, setItems] = useState<OvertimePrediction[]>([]);
   const [method, setMethod] = useState("");
+  const [attendanceReviewCount, setAttendanceReviewCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -66,6 +67,31 @@ export default function PredictionsPage() {
 
       setItems(Array.isArray(data.items) ? data.items : []);
       setMethod(typeof data.method === "string" ? data.method : "");
+
+      const reviewParams = new URLSearchParams({
+        year_month: yearMonth,
+      });
+      const reviewRes = await fetch(
+        `${API_BASE}/predictions/attendance-review?${reviewParams.toString()}`,
+        {
+          credentials: "include",
+          cache: "no-store",
+        }
+      );
+      const reviewData = await reviewRes.json().catch(() => null);
+
+      if (!reviewRes.ok) {
+        setError(
+          reviewData?.detail
+            ? `勤怠確認候補を取得できませんでした: ${reviewData.detail}`
+            : `勤怠確認候補を取得できませんでした: ${reviewRes.status}`
+        );
+        return;
+      }
+
+      setAttendanceReviewCount(
+        Array.isArray(reviewData.items) ? reviewData.items.length : 0
+      );
     } catch {
       setError("予測データの取得中にエラーが発生しました。");
     } finally {
@@ -119,6 +145,12 @@ export default function PredictionsPage() {
         </form>
 
         {error && <p style={{ color: "#ff9d9d" }}>{error}</p>}
+
+        {!error && (
+          <p style={{ marginTop: 20, color: "#fbbf24" }}>
+            勤怠要確認: {attendanceReviewCount}名
+          </p>
+        )}
 
         {!error && method && (
           <p style={{ marginTop: 20, color: "#8fa6bf" }}>
