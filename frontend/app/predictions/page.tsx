@@ -14,10 +14,24 @@ function currentYearMonth() {
   return today().slice(0, 7);
 }
 
+function formatMinutes(value: number) {
+  const hours = Math.floor(value / 60);
+  const minutes = value % 60;
+  return `${hours}時間${minutes ? `${minutes}分` : ""}`;
+}
+
+type OvertimePrediction = {
+  employee_id: string;
+  employee_name: string;
+  actual_overtime_minutes: number;
+  future_confirmed_shift_days: number;
+  forecast_overtime_minutes: number;
+};
+
 export default function PredictionsPage() {
   const [yearMonth, setYearMonth] = useState(currentYearMonth);
   const [asOf, setAsOf] = useState(today);
-  const [items, setItems] = useState<unknown[]>([]);
+  const [items, setItems] = useState<OvertimePrediction[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -105,9 +119,42 @@ export default function PredictionsPage() {
         {error && <p style={{ color: "#ff9d9d" }}>{error}</p>}
 
         {!error && items.length > 0 && (
-          <p style={{ marginTop: 20 }}>
-            予測対象: {items.length}名
-          </p>
+          <div
+            style={{
+              display: "grid",
+              gap: 12,
+              marginTop: 24,
+            }}
+          >
+            <div style={{ color: "#8fa6bf" }}>
+              予測対象: {items.length}名
+            </div>
+
+            {items.map((item) => (
+              <div
+                key={item.employee_id}
+                style={{
+                  padding: 16,
+                  border: "1px solid rgba(148,180,216,0.16)",
+                  borderRadius: 14,
+                }}
+              >
+                <strong>
+                  {item.employee_id} / {item.employee_name}
+                </strong>
+
+                <div style={{ marginTop: 10 }}>
+                  実績残業: {formatMinutes(item.actual_overtime_minutes)}
+                </div>
+                <div>
+                  着地予測: {formatMinutes(item.forecast_overtime_minutes)}
+                </div>
+                <div style={{ color: "#8fa6bf" }}>
+                  今後の確定シフト: {item.future_confirmed_shift_days}日
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </main>
     </AuthGuard>
