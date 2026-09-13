@@ -202,6 +202,14 @@ def overtime_predictions(
             detail="year_month must be YYYY-MM",
         )
 
+    try:
+        parsed_as_of = date.fromisoformat(normalize_input(as_of))
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail="as_of must be YYYY-MM-DD",
+        ) from error
+
     return {"items": []}
 
 
