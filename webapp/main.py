@@ -42,7 +42,10 @@ from services.leave_service import (
     next_leave_grant,
 )
 from services.payslip_service import export_pdf
-from services.prediction_service import build_overtime_forecast
+from services.prediction_service import (
+    build_attendance_review,
+    build_overtime_forecast,
+)
 from services.time_service import format_minutes
 from services.ai_service import OllamaAssistant
 from services.ai_context_service import (
@@ -202,7 +205,27 @@ def attendance_review_predictions(
             detail="year_month must be YYYY-MM",
         )
 
-    return {"items": []}
+    items = []
+
+    for employee in repo.employees():
+        review = build_attendance_review(
+            records=repo.work_records(
+                employee.employee_id,
+                year_month,
+            ),
+        )
+        if review["warning_count"] == 0:
+            continue
+
+        items.append(
+            {
+                "employee_id": employee.employee_id,
+                "employee_name": employee.name,
+                **review,
+            }
+        )
+
+    return {"items": items}
 
 
 @app.get("/predictions/overtime")
