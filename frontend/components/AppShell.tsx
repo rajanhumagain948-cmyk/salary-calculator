@@ -16,6 +16,7 @@ const adminNav = [
   { href: "/payroll", label: "給与計算", icon: "¥", enabled: true },
   { href: "/leave", label: "有給管理", icon: "◇", enabled: true },
   { href: "/ai", label: "AIアシスタント", icon: "✦", enabled: true },
+  { href: "/predictions", label: "予測", icon: "↗", enabled: true },
   { href: "/settings", label: "設定", icon: "⚙", enabled: true },
 ];
 
