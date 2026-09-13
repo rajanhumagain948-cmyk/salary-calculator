@@ -240,7 +240,11 @@ def overtime_predictions(
             }
         )
 
-    return {"items": items}
+    return {
+        "reference_only": True,
+        "used_for_payroll": False,
+        "items": items,
+    }
 
 
 @app.get("/ai/status")
