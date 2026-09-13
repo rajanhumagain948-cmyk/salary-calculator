@@ -210,6 +210,12 @@ def overtime_predictions(
             detail="as_of must be YYYY-MM-DD",
         ) from error
 
+    if parsed_as_of.strftime("%Y-%m") != year_month:
+        raise HTTPException(
+            status_code=400,
+            detail="as_of must be within year_month",
+        )
+
     return {"items": []}
 
 
