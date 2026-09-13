@@ -186,6 +186,10 @@ def test_admin_can_view_employee_overtime_prediction(tmp_path, monkeypatch):
     assert response.status_code == 200
     assert response.json()["reference_only"] is True
     assert response.json()["used_for_payroll"] is False
+    assert response.json()["method"] == (
+        "実績勤務日1日あたりの平均残業時間を、"
+        "基準日より後の確定シフト日数へ外挿"
+    )
     assert response.json()["items"] == [
         {
             "employee_id": "E001",

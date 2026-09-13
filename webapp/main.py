@@ -243,6 +243,10 @@ def overtime_predictions(
     return {
         "reference_only": True,
         "used_for_payroll": False,
+        "method": (
+            "実績勤務日1日あたりの平均残業時間を、"
+            "基準日より後の確定シフト日数へ外挿"
+        ),
         "items": items,
     }
 
