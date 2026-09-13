@@ -264,6 +264,10 @@ def test_build_payroll_estimate_uses_existing_payroll_calculation():
     assert estimate["reference_only"] is True
     assert estimate["used_for_payroll"] is False
     assert estimate["gross_pay"] == "200000"
+    assert estimate["total_deductions"] is not None
+    assert estimate["net_pay"] is not None
+    assert isinstance(estimate["warnings"], list)
+    assert isinstance(estimate["blocking_issues"], list)
 
 
 def test_payroll_estimate_ignores_work_records_after_as_of():
