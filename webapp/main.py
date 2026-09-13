@@ -176,6 +176,19 @@ def logout():
     return resp
 
 
+@app.get("/predictions/attendance-review")
+def attendance_review_predictions(
+    request: Request,
+    year_month: str,
+):
+    user = require_user(request)
+
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="admin only")
+
+    return {"items": []}
+
+
 @app.get("/predictions/overtime")
 def overtime_predictions(
     request: Request,
