@@ -78,3 +78,32 @@ def build_attendance_review(
         "warning_count": len(warnings),
         "warnings": warnings,
     }
+
+
+def build_payroll_estimate(
+    *,
+    employee,
+    terms,
+    records,
+    allowances,
+    transport,
+    other_deductions,
+    year_month: str,
+) -> dict[str, Any]:
+    from services.payroll_service import calculate_payroll
+
+    result = calculate_payroll(
+        employee=employee,
+        terms=terms,
+        records=records,
+        allowances=allowances,
+        transport=transport,
+        other_deductions=other_deductions,
+        year_month=year_month,
+    )
+
+    return {
+        "reference_only": True,
+        "used_for_payroll": False,
+        "gross_pay": str(result.gross_pay),
+    }

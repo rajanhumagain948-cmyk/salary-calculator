@@ -229,3 +229,38 @@ def test_attendance_review_finds_existing_attendance_warnings():
             "messages": ["休憩が法定目安より60分不足しています。"],
         }
     ]
+
+
+def test_build_payroll_estimate_uses_existing_payroll_calculation():
+    from decimal import Decimal
+
+    from models.employee import Employee
+    from models.transportation import Transportation
+    from services.prediction_service import build_payroll_estimate
+
+    employee = Employee(
+        employee_id="E001",
+        name="山田太郎",
+        employment_type="正社員",
+        hire_date=date(2025, 1, 1),
+        pay_type="月給",
+        monthly_salary=Decimal("200000"),
+    )
+    terms = EmploymentTerms(
+        "E001",
+        monthly_hourly_divisor=Decimal("160"),
+    )
+
+    estimate = build_payroll_estimate(
+        employee=employee,
+        terms=terms,
+        records=[],
+        allowances=[],
+        transport=Transportation(),
+        other_deductions=[],
+        year_month="2026-09",
+    )
+
+    assert estimate["reference_only"] is True
+    assert estimate["used_for_payroll"] is False
+    assert estimate["gross_pay"] == "200000"
