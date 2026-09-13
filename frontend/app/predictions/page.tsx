@@ -32,6 +32,7 @@ export default function PredictionsPage() {
   const [yearMonth, setYearMonth] = useState(currentYearMonth);
   const [asOf, setAsOf] = useState(today);
   const [items, setItems] = useState<OvertimePrediction[]>([]);
+  const [method, setMethod] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -64,6 +65,7 @@ export default function PredictionsPage() {
       }
 
       setItems(Array.isArray(data.items) ? data.items : []);
+      setMethod(typeof data.method === "string" ? data.method : "");
     } catch {
       setError("予測データの取得中にエラーが発生しました。");
     } finally {
@@ -117,6 +119,12 @@ export default function PredictionsPage() {
         </form>
 
         {error && <p style={{ color: "#ff9d9d" }}>{error}</p>}
+
+        {!error && method && (
+          <p style={{ marginTop: 20, color: "#8fa6bf" }}>
+            予測方法: {method}
+          </p>
+        )}
 
         {!error && items.length > 0 && (
           <div
