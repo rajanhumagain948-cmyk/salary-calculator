@@ -1,18 +1,66 @@
 "use client";
 
+import { FormEvent, useState } from "react";
 import AuthGuard from "@/components/auth/AuthGuard";
 
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
+
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function currentYearMonth() {
+  return today().slice(0, 7);
+}
+
 export default function PredictionsPage() {
+  const [yearMonth, setYearMonth] = useState(currentYearMonth);
+  const [asOf, setAsOf] = useState(today);
+  const [items, setItems] = useState<unknown[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function loadPredictions(e: FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+
+    try {
+      const params = new URLSearchParams({
+        year_month: yearMonth,
+        as_of: asOf,
+      });
+      const res = await fetch(
+        `${API_BASE}/predictions/overtime?${params.toString()}`,
+        {
+          credentials: "include",
+          cache: "no-store",
+        }
+      );
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        setError(
+          data?.detail
+            ? `予測を取得できませんでした: ${data.detail}`
+            : `予測を取得できませんでした: ${res.status}`
+        );
+        return;
+      }
+
+      setItems(Array.isArray(data.items) ? data.items : []);
+    } catch {
+      setError("予測データの取得中にエラーが発生しました。");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <AuthGuard allow={["admin"]}>
       <main style={{ padding: 24 }}>
-        <div
-          style={{
-            color: "#8390ff",
-            fontSize: 12,
-            fontWeight: 800,
-          }}
-        >
+        <div style={{ color: "#8390ff", fontSize: 12, fontWeight: 800 }}>
           会社側・参考予測
         </div>
 
@@ -25,6 +73,42 @@ export default function PredictionsPage() {
         <p style={{ color: "#fbbf24" }}>
           予測値は参考情報です。給与計算・給与確定には使用しません。
         </p>
+
+        <form onSubmit={loadPredictions}>
+          <label style={{ marginRight: 12 }}>
+            対象月
+            <input
+              type="month"
+              value={yearMonth}
+              onChange={(e) => setYearMonth(e.target.value)}
+              required
+              style={{ marginLeft: 8 }}
+            />
+          </label>
+
+          <label style={{ marginRight: 12 }}>
+            基準日
+            <input
+              type="date"
+              value={asOf}
+              onChange={(e) => setAsOf(e.target.value)}
+              required
+              style={{ marginLeft: 8 }}
+            />
+          </label>
+
+          <button type="submit" disabled={loading}>
+            {loading ? "予測中…" : "残業予測を表示"}
+          </button>
+        </form>
+
+        {error && <p style={{ color: "#ff9d9d" }}>{error}</p>}
+
+        {!error && items.length > 0 && (
+          <p style={{ marginTop: 20 }}>
+            予測対象: {items.length}名
+          </p>
+        )}
       </main>
     </AuthGuard>
   );
