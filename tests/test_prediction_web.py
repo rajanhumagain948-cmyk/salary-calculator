@@ -228,3 +228,24 @@ def test_employee_cannot_view_attendance_review_predictions(
 
     assert response.status_code == 403
     assert response.json()["detail"] == "admin only"
+
+
+def test_attendance_review_rejects_invalid_year_month(tmp_path, monkeypatch):
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    test_repo.save_user(
+        User(username="admin", password_hash="unused", role="admin")
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "admin"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.get(
+        "/predictions/attendance-review",
+        params={"year_month": "2026-9"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "year_month must be YYYY-MM"
