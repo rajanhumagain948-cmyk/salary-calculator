@@ -307,3 +307,52 @@ def test_payroll_estimate_ignores_work_records_after_as_of():
     )
 
     assert estimate["gross_pay"] == "200000"
+
+
+def test_payroll_estimate_limits_daily_transport_to_actual_records():
+    from decimal import Decimal
+
+    from models.employee import Employee
+    from models.transportation import Transportation
+    from services.prediction_service import build_payroll_estimate
+
+    employee = Employee(
+        employee_id="E001",
+        name="山田太郎",
+        employment_type="正社員",
+        hire_date=date(2025, 1, 1),
+        pay_type="月給",
+        monthly_salary=Decimal("200000"),
+    )
+    terms = EmploymentTerms(
+        "E001",
+        monthly_hourly_divisor=Decimal("160"),
+    )
+    records = [
+        WorkRecord(
+            employee_id="E001",
+            work_date=date(2026, 9, 1),
+            start_minute=9 * 60,
+            end_minute=18 * 60,
+            break_total_minutes=60,
+        )
+    ]
+    transport = Transportation(
+        method="日額",
+        unit_amount=Decimal("1000"),
+        attendance_days=20,
+        taxable=False,
+    )
+
+    estimate = build_payroll_estimate(
+        employee=employee,
+        terms=terms,
+        records=records,
+        allowances=[],
+        transport=transport,
+        other_deductions=[],
+        year_month="2026-09",
+        as_of=date(2026, 9, 10),
+    )
+
+    assert estimate["gross_pay"] == "201000"

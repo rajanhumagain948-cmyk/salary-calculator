@@ -103,12 +103,17 @@ def build_payroll_estimate(
         else records
     )
 
+    from copy import copy
+
+    estimate_transport = copy(transport)
+    estimate_transport.attendance_days = len(estimate_records)
+
     result = calculate_payroll(
         employee=employee,
         terms=terms,
         records=estimate_records,
         allowances=allowances,
-        transport=transport,
+        transport=estimate_transport,
         other_deductions=other_deductions,
         year_month=year_month,
     )
