@@ -305,3 +305,32 @@ def test_admin_can_view_attendance_review_items(tmp_path, monkeypatch):
             ],
         }
     ]
+
+
+def test_employee_cannot_view_payroll_estimates(tmp_path, monkeypatch):
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    test_repo.save_user(
+        User(
+            username="employee",
+            password_hash="unused",
+            role="employee",
+            employee_id="E001",
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "employee"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.get(
+        "/predictions/payroll-estimate",
+        params={
+            "year_month": "2026-09",
+            "as_of": "2026-09-10",
+        },
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "admin only"

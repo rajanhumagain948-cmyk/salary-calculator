@@ -179,6 +179,20 @@ def logout():
     return resp
 
 
+@app.get("/predictions/payroll-estimate")
+def payroll_estimate_predictions(
+    request: Request,
+    year_month: str,
+    as_of: str,
+):
+    user = require_user(request)
+
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="admin only")
+
+    return {"items": []}
+
+
 @app.get("/predictions/attendance-review")
 def attendance_review_predictions(
     request: Request,
