@@ -29,10 +29,12 @@ def build_overtime_forecast(
     )
 
     worked_days = attendance_days(actual_records)
-    future_confirmed_shift_days = sum(
-        1
-        for shift in (shifts or [])
-        if shift.confirmed and shift.shift_date > as_of
+    future_confirmed_shift_days = len(
+        {
+            shift.shift_date
+            for shift in (shifts or [])
+            if shift.confirmed and shift.shift_date > as_of
+        }
     )
 
     average_overtime_minutes = (

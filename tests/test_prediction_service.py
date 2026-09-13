@@ -164,3 +164,44 @@ def test_overtime_forecast_is_zero_without_actual_work_history():
     assert forecast["actual_overtime_minutes"] == 0
     assert forecast["future_confirmed_shift_days"] == 1
     assert forecast["forecast_overtime_minutes"] == 0
+
+
+def test_overtime_forecast_counts_confirmed_shift_dates_once():
+    from models.shifts import Shift
+
+    terms = EmploymentTerms("E001")
+    records = [
+        WorkRecord(
+            employee_id="E001",
+            work_date=date(2026, 9, 1),
+            start_minute=9 * 60,
+            end_minute=19 * 60,
+            break_total_minutes=60,
+        )
+    ]
+    shifts = [
+        Shift(
+            employee_id="E001",
+            shift_date=date(2026, 9, 2),
+            start_minute=9 * 60,
+            end_minute=12 * 60,
+            confirmed=True,
+        ),
+        Shift(
+            employee_id="E001",
+            shift_date=date(2026, 9, 2),
+            start_minute=13 * 60,
+            end_minute=18 * 60,
+            confirmed=True,
+        ),
+    ]
+
+    forecast = build_overtime_forecast(
+        records=records,
+        terms=terms,
+        shifts=shifts,
+        as_of=date(2026, 9, 1),
+    )
+
+    assert forecast["future_confirmed_shift_days"] == 1
+    assert forecast["forecast_overtime_minutes"] == 120
