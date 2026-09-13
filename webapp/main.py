@@ -42,6 +42,7 @@ from services.leave_service import (
     next_leave_grant,
 )
 from services.payslip_service import export_pdf
+from services.prediction_service import build_overtime_forecast
 from services.time_service import format_minutes
 from services.ai_service import OllamaAssistant
 from services.ai_context_service import (
@@ -216,7 +217,30 @@ def overtime_predictions(
             detail="as_of must be within year_month",
         )
 
-    return {"items": []}
+    items = []
+
+    for employee in repo.employees():
+        forecast = build_overtime_forecast(
+            records=repo.work_records(
+                employee.employee_id,
+                year_month,
+            ),
+            terms=repo.terms(employee.employee_id),
+            shifts=repo.shifts(
+                employee.employee_id,
+                year_month,
+            ),
+            as_of=parsed_as_of,
+        )
+        items.append(
+            {
+                "employee_id": employee.employee_id,
+                "employee_name": employee.name,
+                **forecast,
+            }
+        )
+
+    return {"items": items}
 
 
 @app.get("/ai/status")
