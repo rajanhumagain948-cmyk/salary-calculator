@@ -20,6 +20,16 @@ function formatMinutes(value: number) {
   return `${hours}時間${minutes ? `${minutes}分` : ""}`;
 }
 
+type AttendanceReview = {
+  employee_id: string;
+  employee_name: string;
+  warning_count: number;
+  warnings: {
+    work_date: string;
+    messages: string[];
+  }[];
+};
+
 type OvertimePrediction = {
   employee_id: string;
   employee_name: string;
@@ -33,7 +43,9 @@ export default function PredictionsPage() {
   const [asOf, setAsOf] = useState(today);
   const [items, setItems] = useState<OvertimePrediction[]>([]);
   const [method, setMethod] = useState("");
-  const [attendanceReviewCount, setAttendanceReviewCount] = useState(0);
+  const [attendanceReviews, setAttendanceReviews] = useState<
+    AttendanceReview[]
+  >([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -89,8 +101,8 @@ export default function PredictionsPage() {
         return;
       }
 
-      setAttendanceReviewCount(
-        Array.isArray(reviewData.items) ? reviewData.items.length : 0
+      setAttendanceReviews(
+        Array.isArray(reviewData.items) ? reviewData.items : []
       );
     } catch {
       setError("予測データの取得中にエラーが発生しました。");
@@ -147,9 +159,36 @@ export default function PredictionsPage() {
         {error && <p style={{ color: "#ff9d9d" }}>{error}</p>}
 
         {!error && (
-          <p style={{ marginTop: 20, color: "#fbbf24" }}>
-            勤怠要確認: {attendanceReviewCount}名
-          </p>
+          <div style={{ marginTop: 20 }}>
+            <div style={{ color: "#fbbf24", marginBottom: 8 }}>
+              勤怠要確認: {attendanceReviews.length}名
+            </div>
+
+            {attendanceReviews.map((review) => (
+              <div
+                key={review.employee_id}
+                style={{
+                  marginBottom: 10,
+                  padding: 14,
+                  border: "1px solid rgba(251,191,36,0.18)",
+                  borderRadius: 12,
+                }}
+              >
+                <strong>
+                  {review.employee_id} / {review.employee_name}
+                </strong>
+
+                {review.warnings.map((warning) => (
+                  <div
+                    key={warning.work_date}
+                    style={{ marginTop: 8, color: "#c7d2e3" }}
+                  >
+                    {warning.work_date}: {warning.messages.join(" / ")}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
         )}
 
         {!error && method && (
