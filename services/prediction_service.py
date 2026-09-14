@@ -203,3 +203,29 @@ def build_leave_trend(
         "approved_days": approved_days,
         "monthly_approved_days": monthly_approved_days,
     }
+
+
+def build_payroll_processing_risk(
+    *,
+    warnings: list[str],
+    blocking_issues: list[str],
+) -> dict[str, Any]:
+    if blocking_issues:
+        return {
+            "level": "high",
+            "reasons": [
+                *blocking_issues,
+                *warnings,
+            ],
+        }
+
+    if warnings:
+        return {
+            "level": "medium",
+            "reasons": list(warnings),
+        }
+
+    return {
+        "level": "none",
+        "reasons": [],
+    }

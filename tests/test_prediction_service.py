@@ -473,3 +473,20 @@ def test_leave_trend_summarizes_approved_days_for_target_year():
         "2026-02": Decimal("1"),
         "2026-07": Decimal("0.5"),
     }
+
+
+def test_payroll_processing_risk_prioritizes_blocking_issues():
+    from services.prediction_service import build_payroll_processing_risk
+
+    risk = build_payroll_processing_risk(
+        warnings=["標準報酬月額を確認してください"],
+        blocking_issues=["月平均所定労働時間を設定してください"],
+    )
+
+    assert risk == {
+        "level": "high",
+        "reasons": [
+            "月平均所定労働時間を設定してください",
+            "標準報酬月額を確認してください",
+        ],
+    }
