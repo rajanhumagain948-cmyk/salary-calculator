@@ -43,6 +43,12 @@ type PayrollEstimate = {
   error?: string;
 };
 
+type PayrollEstimateSummary = {
+  gross_pay_reference_total: string;
+  included_count: number;
+  excluded_count: number;
+};
+
 type OvertimePrediction = {
   employee_id: string;
   employee_name: string;
@@ -63,6 +69,8 @@ export default function PredictionsPage() {
     PayrollEstimate[]
   >([]);
   const [payrollMethod, setPayrollMethod] = useState("");
+  const [payrollSummary, setPayrollSummary] =
+    useState<PayrollEstimateSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -146,6 +154,7 @@ export default function PredictionsPage() {
       setPayrollMethod(
         typeof payrollData.method === "string" ? payrollData.method : ""
       );
+      setPayrollSummary(payrollData.summary ?? null);
     } catch {
       setError("予測データの取得中にエラーが発生しました。");
     } finally {
@@ -230,6 +239,28 @@ export default function PredictionsPage() {
                 ))}
               </div>
             ))}
+          </div>
+        )}
+
+        {!error && payrollSummary && (
+          <div
+            style={{
+              marginTop: 24,
+              padding: 16,
+              border: "1px solid rgba(129,140,248,0.22)",
+              borderRadius: 14,
+            }}
+          >
+            <div style={{ color: "#8fa6bf", fontSize: 13 }}>
+              総支給参考額
+            </div>
+            <div style={{ marginTop: 6, fontSize: 24, fontWeight: 800 }}>
+              {Number(payrollSummary.gross_pay_reference_total).toLocaleString()}円
+            </div>
+            <div style={{ marginTop: 6, color: "#8fa6bf", fontSize: 12 }}>
+              集計対象 {payrollSummary.included_count}名 / 対象外{" "}
+              {payrollSummary.excluded_count}名
+            </div>
           </div>
         )}
 
