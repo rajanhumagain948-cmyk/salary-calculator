@@ -490,3 +490,17 @@ def test_payroll_processing_risk_prioritizes_blocking_issues():
             "標準報酬月額を確認してください",
         ],
     }
+
+
+def test_payroll_processing_risk_marks_warnings_medium():
+    from services.prediction_service import build_payroll_processing_risk
+
+    risk = build_payroll_processing_risk(
+        warnings=["標準報酬月額を確認してください"],
+        blocking_issues=[],
+    )
+
+    assert risk == {
+        "level": "medium",
+        "reasons": ["標準報酬月額を確認してください"],
+    }
