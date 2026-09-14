@@ -34,6 +34,7 @@ type PayrollEstimate = {
   employee_id: string;
   employee_name: string;
   status: "確定済" | "参考試算" | "計算不可";
+  forecastable?: boolean;
   gross_pay?: string;
   total_deductions?: string;
   net_pay?: string;
@@ -267,6 +268,17 @@ export default function PredictionsPage() {
                   <span style={{ marginLeft: 10, color: "#a5b4fc" }}>
                     {item.status}
                   </span>
+
+                  {item.status === "参考試算" && (
+                    <span
+                      style={{
+                        marginLeft: 10,
+                        color: item.forecastable ? "#86efac" : "#fbbf24",
+                      }}
+                    >
+                      {item.forecastable ? "予測可能" : "要設定確認"}
+                    </span>
+                  )}
 
                   {item.status === "計算不可" ? (
                     <div style={{ marginTop: 8, color: "#ff9d9d" }}>
