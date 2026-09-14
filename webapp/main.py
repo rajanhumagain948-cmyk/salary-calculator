@@ -192,6 +192,22 @@ def payroll_risk_predictions(
     if user.role != "admin":
         raise HTTPException(status_code=403, detail="admin only")
 
+    year_month = normalize_input(year_month)
+
+    try:
+        parsed_year_month = datetime.strptime(year_month, "%Y-%m")
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail="year_month must be YYYY-MM",
+        ) from error
+
+    if parsed_year_month.strftime("%Y-%m") != year_month:
+        raise HTTPException(
+            status_code=400,
+            detail="year_month must be YYYY-MM",
+        )
+
     return {"items": []}
 
 
