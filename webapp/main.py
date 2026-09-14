@@ -46,6 +46,7 @@ from services.prediction_service import (
     build_attendance_review,
     build_overtime_forecast,
     build_payroll_estimate,
+    summarize_payroll_estimates,
 )
 from services.time_service import format_minutes
 from services.ai_service import OllamaAssistant
@@ -291,6 +292,7 @@ def payroll_estimate_predictions(
         "method": (
             "基準日までの実績勤怠と現在入力済みの給与条件による参考試算"
         ),
+        "summary": summarize_payroll_estimates(items),
         "items": items,
     }
 

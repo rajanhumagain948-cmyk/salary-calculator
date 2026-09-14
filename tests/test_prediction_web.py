@@ -464,6 +464,11 @@ def test_admin_can_view_payroll_estimate(tmp_path, monkeypatch):
     assert response.json()["items"][0]["employee_name"] == "山田太郎"
     assert response.json()["items"][0]["forecastable"] is True
     assert response.json()["items"][0]["gross_pay"] == "200000"
+    assert response.json()["summary"] == {
+        "gross_pay_reference_total": "200000",
+        "included_count": 1,
+        "excluded_count": 0,
+    }
     assert test_repo.payroll_result("E001", "2026-09") is None
 
 
