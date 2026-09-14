@@ -191,6 +191,13 @@ def leave_trend_predictions(
     if user.role != "admin":
         raise HTTPException(status_code=403, detail="admin only")
 
+    year = normalize_input(year)
+    if len(year) != 4 or not year.isdigit():
+        raise HTTPException(
+            status_code=400,
+            detail="year must be YYYY",
+        )
+
     return {"items": []}
 
 

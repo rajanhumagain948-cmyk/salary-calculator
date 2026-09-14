@@ -601,3 +601,24 @@ def test_employee_cannot_view_leave_trends(tmp_path, monkeypatch):
 
     assert response.status_code == 403
     assert response.json()["detail"] == "admin only"
+
+
+def test_leave_trends_reject_invalid_year(tmp_path, monkeypatch):
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    test_repo.save_user(
+        User(username="admin", password_hash="unused", role="admin")
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "admin"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.get(
+        "/predictions/leave-trend",
+        params={"year": "26"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "year must be YYYY"
