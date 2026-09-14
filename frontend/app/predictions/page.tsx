@@ -43,6 +43,13 @@ type PayrollEstimate = {
   error?: string;
 };
 
+type PayrollRisk = {
+  employee_id: string;
+  employee_name: string;
+  level: "high" | "medium";
+  reasons: string[];
+};
+
 type LeaveTrend = {
   employee_id: string;
   employee_name: string;
@@ -80,6 +87,7 @@ export default function PredictionsPage() {
   const [payrollSummary, setPayrollSummary] =
     useState<PayrollEstimateSummary | null>(null);
   const [leaveTrends, setLeaveTrends] = useState<LeaveTrend[]>([]);
+  const [payrollRisks, setPayrollRisks] = useState<PayrollRisk[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -189,6 +197,28 @@ export default function PredictionsPage() {
       setLeaveTrends(
         Array.isArray(leaveData.items) ? leaveData.items : []
       );
+
+      const riskRes = await fetch(
+        `${API_BASE}/predictions/payroll-risk?${reviewParams.toString()}`,
+        {
+          credentials: "include",
+          cache: "no-store",
+        }
+      );
+      const riskData = await riskRes.json().catch(() => null);
+
+      if (!riskRes.ok) {
+        setError(
+          riskData?.detail
+            ? `給与処理リスクを取得できませんでした: ${riskData.detail}`
+            : `給与処理リスクを取得できませんでした: ${riskRes.status}`
+        );
+        return;
+      }
+
+      setPayrollRisks(
+        Array.isArray(riskData.items) ? riskData.items : []
+      );
     } catch {
       setError("予測データの取得中にエラーが発生しました。");
     } finally {
@@ -273,6 +303,45 @@ export default function PredictionsPage() {
                 ))}
               </div>
             ))}
+          </div>
+        )}
+
+        {!error && (
+          <div style={{ marginTop: 24 }}>
+            <div style={{ color: "#fb7185", marginBottom: 10 }}>
+              給与処理 要確認: {payrollRisks.length}名
+            </div>
+
+            <div style={{ display: "grid", gap: 10 }}>
+              {payrollRisks.map((risk) => (
+                <div
+                  key={risk.employee_id}
+                  style={{
+                    padding: 14,
+                    border:
+                      risk.level === "high"
+                        ? "1px solid rgba(251,113,133,0.28)"
+                        : "1px solid rgba(251,191,36,0.22)",
+                    borderRadius: 12,
+                  }}
+                >
+                  <strong>
+                    {risk.employee_id} / {risk.employee_name}
+                  </strong>
+                  <span
+                    style={{
+                      marginLeft: 10,
+                      color: risk.level === "high" ? "#fb7185" : "#fbbf24",
+                    }}
+                  >
+                    {risk.level === "high" ? "HIGH" : "MEDIUM"}
+                  </span>
+                  <div style={{ marginTop: 8, color: "#c7d2e3" }}>
+                    {risk.reasons.join(" / ")}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
