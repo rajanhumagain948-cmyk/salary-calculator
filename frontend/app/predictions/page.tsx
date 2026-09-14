@@ -61,6 +61,7 @@ export default function PredictionsPage() {
   const [payrollEstimates, setPayrollEstimates] = useState<
     PayrollEstimate[]
   >([]);
+  const [payrollMethod, setPayrollMethod] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -140,6 +141,9 @@ export default function PredictionsPage() {
 
       setPayrollEstimates(
         Array.isArray(payrollData.items) ? payrollData.items : []
+      );
+      setPayrollMethod(
+        typeof payrollData.method === "string" ? payrollData.method : ""
       );
     } catch {
       setError("予測データの取得中にエラーが発生しました。");
@@ -226,6 +230,12 @@ export default function PredictionsPage() {
               </div>
             ))}
           </div>
+        )}
+
+        {!error && payrollMethod && (
+          <p style={{ marginTop: 20, color: "#8fa6bf" }}>
+            給与参考試算方法: {payrollMethod}
+          </p>
         )}
 
         {!error && payrollEstimates.length > 0 && (
