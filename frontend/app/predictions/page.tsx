@@ -30,6 +30,12 @@ type AttendanceReview = {
   }[];
 };
 
+type PayrollEstimate = {
+  employee_id: string;
+  employee_name: string;
+  status: "確定済" | "参考試算" | "計算不可";
+};
+
 type OvertimePrediction = {
   employee_id: string;
   employee_name: string;
@@ -45,6 +51,9 @@ export default function PredictionsPage() {
   const [method, setMethod] = useState("");
   const [attendanceReviews, setAttendanceReviews] = useState<
     AttendanceReview[]
+  >([]);
+  const [payrollEstimates, setPayrollEstimates] = useState<
+    PayrollEstimate[]
   >([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -103,6 +112,28 @@ export default function PredictionsPage() {
 
       setAttendanceReviews(
         Array.isArray(reviewData.items) ? reviewData.items : []
+      );
+
+      const payrollRes = await fetch(
+        `${API_BASE}/predictions/payroll-estimate?${params.toString()}`,
+        {
+          credentials: "include",
+          cache: "no-store",
+        }
+      );
+      const payrollData = await payrollRes.json().catch(() => null);
+
+      if (!payrollRes.ok) {
+        setError(
+          payrollData?.detail
+            ? `給与参考試算を取得できませんでした: ${payrollData.detail}`
+            : `給与参考試算を取得できませんでした: ${payrollRes.status}`
+        );
+        return;
+      }
+
+      setPayrollEstimates(
+        Array.isArray(payrollData.items) ? payrollData.items : []
       );
     } catch {
       setError("予測データの取得中にエラーが発生しました。");
@@ -189,6 +220,19 @@ export default function PredictionsPage() {
               </div>
             ))}
           </div>
+        )}
+
+        {!error && payrollEstimates.length > 0 && (
+          <p style={{ marginTop: 20, color: "#a5b4fc" }}>
+            給与参考試算:{" "}
+            {payrollEstimates.filter((item) => item.status === "参考試算").length}名
+            {" / "}
+            確定済:{" "}
+            {payrollEstimates.filter((item) => item.status === "確定済").length}名
+            {" / "}
+            計算不可:{" "}
+            {payrollEstimates.filter((item) => item.status === "計算不可").length}名
+          </p>
         )}
 
         {!error && method && (
