@@ -182,6 +182,19 @@ def logout():
     return resp
 
 
+@app.get("/predictions/payroll-risk")
+def payroll_risk_predictions(
+    request: Request,
+    year_month: str,
+):
+    user = require_user(request)
+
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="admin only")
+
+    return {"items": []}
+
+
 @app.get("/predictions/leave-trend")
 def leave_trend_predictions(
     request: Request,

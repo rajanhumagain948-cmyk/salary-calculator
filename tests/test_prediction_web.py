@@ -693,3 +693,32 @@ def test_admin_can_view_leave_trend_items(tmp_path, monkeypatch):
             },
         }
     ]
+
+
+def test_employee_cannot_view_payroll_processing_risks(
+    tmp_path,
+    monkeypatch,
+):
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    test_repo.save_user(
+        User(
+            username="employee",
+            password_hash="unused",
+            role="employee",
+            employee_id="E001",
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "employee"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.get(
+        "/predictions/payroll-risk",
+        params={"year_month": "2026-09"},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "admin only"
