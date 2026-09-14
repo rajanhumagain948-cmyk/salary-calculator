@@ -392,3 +392,36 @@ def test_payroll_estimate_marks_blocking_result_not_forecastable():
     )
 
     assert estimate["forecastable"] is False
+
+
+def test_summarize_payroll_estimates_totals_eligible_gross_pay():
+    from services.prediction_service import summarize_payroll_estimates
+
+    summary = summarize_payroll_estimates(
+        [
+            {
+                "status": "確定済",
+                "gross_pay": "200000",
+            },
+            {
+                "status": "参考試算",
+                "forecastable": True,
+                "gross_pay": "180000",
+            },
+            {
+                "status": "参考試算",
+                "forecastable": False,
+                "gross_pay": "150000",
+            },
+            {
+                "status": "計算不可",
+                "error": "設定不足",
+            },
+        ]
+    )
+
+    assert summary == {
+        "gross_pay_reference_total": "380000",
+        "included_count": 2,
+        "excluded_count": 2,
+    }

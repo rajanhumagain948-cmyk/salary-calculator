@@ -128,3 +128,33 @@ def build_payroll_estimate(
         "warnings": list(result.warnings),
         "blocking_issues": list(result.blocking_issues),
     }
+
+
+def summarize_payroll_estimates(
+    items: list[dict[str, Any]],
+) -> dict[str, Any]:
+    from decimal import Decimal
+
+    total = Decimal("0")
+    included_count = 0
+
+    for item in items:
+        included = (
+            item.get("status") == "確定済"
+            or (
+                item.get("status") == "参考試算"
+                and item.get("forecastable") is True
+            )
+        )
+
+        if not included:
+            continue
+
+        total += Decimal(str(item["gross_pay"]))
+        included_count += 1
+
+    return {
+        "gross_pay_reference_total": str(total),
+        "included_count": included_count,
+        "excluded_count": len(items) - included_count,
+    }
