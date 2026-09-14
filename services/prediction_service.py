@@ -121,6 +121,7 @@ def build_payroll_estimate(
     return {
         "reference_only": True,
         "used_for_payroll": False,
+        "forecastable": not bool(result.blocking_issues),
         "gross_pay": str(result.gross_pay),
         "total_deductions": str(result.total_deductions),
         "net_pay": str(result.net_pay),

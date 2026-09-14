@@ -360,3 +360,34 @@ def test_payroll_estimate_limits_daily_transport_to_actual_records():
     )
 
     assert estimate["gross_pay"] == "201000"
+
+
+def test_payroll_estimate_marks_blocking_result_not_forecastable():
+    from decimal import Decimal
+
+    from models.employee import Employee
+    from models.transportation import Transportation
+    from services.prediction_service import build_payroll_estimate
+
+    estimate = build_payroll_estimate(
+        employee=Employee(
+            employee_id="E001",
+            name="山田太郎",
+            employment_type="正社員",
+            hire_date=date(2025, 1, 1),
+            pay_type="月給",
+            monthly_salary=Decimal("200000"),
+        ),
+        terms=EmploymentTerms(
+            "E001",
+            monthly_hourly_divisor=Decimal("0"),
+        ),
+        records=[],
+        allowances=[],
+        transport=Transportation(),
+        other_deductions=[],
+        year_month="2026-09",
+        as_of=date(2026, 9, 10),
+    )
+
+    assert estimate["forecastable"] is False
