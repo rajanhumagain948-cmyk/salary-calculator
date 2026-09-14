@@ -575,3 +575,29 @@ def test_payroll_estimate_reports_employee_calculation_error(
         "included_count": 0,
         "excluded_count": 1,
     }
+
+
+def test_employee_cannot_view_leave_trends(tmp_path, monkeypatch):
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    test_repo.save_user(
+        User(
+            username="employee",
+            password_hash="unused",
+            role="employee",
+            employee_id="E001",
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "employee"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.get(
+        "/predictions/leave-trend",
+        params={"year": "2026"},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "admin only"
