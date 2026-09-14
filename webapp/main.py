@@ -287,6 +287,7 @@ def payroll_estimate_predictions(
     return {
         "reference_only": True,
         "used_for_payroll": False,
+        "includes_future_work": False,
         "method": (
             "基準日までの実績勤怠と現在入力済みの給与条件による参考試算"
         ),

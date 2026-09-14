@@ -456,6 +456,7 @@ def test_admin_can_view_payroll_estimate(tmp_path, monkeypatch):
     assert response.status_code == 200
     assert response.json()["reference_only"] is True
     assert response.json()["used_for_payroll"] is False
+    assert response.json()["includes_future_work"] is False
     assert response.json()["method"] == (
         "基準日までの実績勤怠と現在入力済みの給与条件による参考試算"
     )
