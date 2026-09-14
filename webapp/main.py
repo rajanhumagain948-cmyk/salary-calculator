@@ -46,6 +46,7 @@ from services.prediction_service import (
     build_attendance_review,
     build_overtime_forecast,
     build_payroll_estimate,
+    build_leave_trend,
     summarize_payroll_estimates,
 )
 from services.time_service import format_minutes
@@ -198,7 +199,31 @@ def leave_trend_predictions(
             detail="year must be YYYY",
         )
 
-    return {"items": []}
+    items = []
+
+    for employee in repo.employees():
+        trend = build_leave_trend(
+            requests=repo.leave_requests(employee.employee_id),
+            year=int(year),
+            standard_daily_minutes=repo.terms(
+                employee.employee_id
+            ).standard_daily_minutes,
+        )
+
+        items.append(
+            {
+                "employee_id": employee.employee_id,
+                "employee_name": employee.name,
+                "approved_request_count": trend["approved_request_count"],
+                "approved_days": str(trend["approved_days"]),
+                "monthly_approved_days": {
+                    key: str(value)
+                    for key, value in trend["monthly_approved_days"].items()
+                },
+            }
+        )
+
+    return {"items": items}
 
 
 @app.get("/predictions/payroll-estimate")

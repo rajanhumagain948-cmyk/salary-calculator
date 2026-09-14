@@ -622,3 +622,74 @@ def test_leave_trends_reject_invalid_year(tmp_path, monkeypatch):
 
     assert response.status_code == 400
     assert response.json()["detail"] == "year must be YYYY"
+
+
+def test_admin_can_view_leave_trend_items(tmp_path, monkeypatch):
+    from datetime import date
+    from decimal import Decimal
+
+    from models.employee import Employee
+    from models.employment import EmploymentTerms
+    from models.leave_request import LeaveRequest
+
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    test_repo.save_user(
+        User(username="admin", password_hash="unused", role="admin")
+    )
+    test_repo.save_employee(
+        Employee(
+            employee_id="E001",
+            name="山田太郎",
+            employment_type="正社員",
+            hire_date=date(2025, 1, 1),
+            pay_type="月給",
+        )
+    )
+    test_repo.save_terms(
+        EmploymentTerms(
+            "E001",
+            standard_daily_minutes=480,
+        )
+    )
+    test_repo.save_leave_request(
+        LeaveRequest(
+            employee_id="E001",
+            leave_date=date(2026, 2, 10),
+            status="承認",
+            leave_unit="全日",
+        )
+    )
+    test_repo.save_leave_request(
+        LeaveRequest(
+            employee_id="E001",
+            leave_date=date(2026, 7, 15),
+            status="承認",
+            leave_unit="半日",
+            half_day_period="午前",
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "admin"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.get(
+        "/predictions/leave-trend",
+        params={"year": "2026"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["items"] == [
+        {
+            "employee_id": "E001",
+            "employee_name": "山田太郎",
+            "approved_request_count": 2,
+            "approved_days": "1.5",
+            "monthly_approved_days": {
+                "2026-02": "1",
+                "2026-07": "0.5",
+            },
+        }
+    ]
