@@ -158,3 +158,36 @@ def summarize_payroll_estimates(
         "included_count": included_count,
         "excluded_count": len(items) - included_count,
     }
+
+
+def build_leave_trend(
+    *,
+    requests,
+    year: int,
+    standard_daily_minutes: int,
+) -> dict[str, Any]:
+    from decimal import Decimal
+    from services.leave_service import leave_request_days
+
+    approved = [
+        request
+        for request in requests
+        if request.status == "承認"
+        and request.leave_date.year == year
+    ]
+
+    approved_days = sum(
+        (
+            leave_request_days(
+                request,
+                standard_daily_minutes,
+            )
+            for request in approved
+        ),
+        Decimal("0"),
+    )
+
+    return {
+        "approved_request_count": len(approved),
+        "approved_days": approved_days,
+    }

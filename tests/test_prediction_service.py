@@ -425,3 +425,47 @@ def test_summarize_payroll_estimates_totals_eligible_gross_pay():
         "included_count": 2,
         "excluded_count": 2,
     }
+
+
+def test_leave_trend_summarizes_approved_days_for_target_year():
+    from decimal import Decimal
+
+    from models.leave_request import LeaveRequest
+    from services.prediction_service import build_leave_trend
+
+    requests = [
+        LeaveRequest(
+            employee_id="E001",
+            leave_date=date(2026, 2, 10),
+            status="承認",
+            leave_unit="全日",
+        ),
+        LeaveRequest(
+            employee_id="E001",
+            leave_date=date(2026, 7, 15),
+            status="承認",
+            leave_unit="半日",
+            half_day_period="午前",
+        ),
+        LeaveRequest(
+            employee_id="E001",
+            leave_date=date(2026, 9, 20),
+            status="申請中",
+            leave_unit="全日",
+        ),
+        LeaveRequest(
+            employee_id="E001",
+            leave_date=date(2025, 12, 20),
+            status="承認",
+            leave_unit="全日",
+        ),
+    ]
+
+    trend = build_leave_trend(
+        requests=requests,
+        year=2026,
+        standard_daily_minutes=480,
+    )
+
+    assert trend["approved_request_count"] == 2
+    assert trend["approved_days"] == Decimal("1.5")
