@@ -296,6 +296,45 @@ export default function PredictionsPage() {
                 )
                 .toLocaleString()}日
             </div>
+
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 8,
+                marginTop: 12,
+              }}
+            >
+              {Object.entries(
+                leaveTrends.reduce<Record<string, number>>(
+                  (months, item) => {
+                    for (const [month, days] of Object.entries(
+                      item.monthly_approved_days
+                    )) {
+                      months[month] =
+                        (months[month] ?? 0) + Number(days);
+                    }
+                    return months;
+                  },
+                  {}
+                )
+              )
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([month, days]) => (
+                  <span
+                    key={month}
+                    style={{
+                      padding: "5px 9px",
+                      borderRadius: 999,
+                      background: "rgba(52,211,153,0.10)",
+                      color: "#86efac",
+                      fontSize: 12,
+                    }}
+                  >
+                    {month}: {days}日
+                  </span>
+                ))}
+            </div>
           </div>
         )}
 
