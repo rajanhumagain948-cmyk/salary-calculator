@@ -409,3 +409,53 @@ def test_payroll_estimates_reject_as_of_outside_target_month(
 
     assert response.status_code == 400
     assert response.json()["detail"] == "as_of must be within year_month"
+
+
+def test_admin_can_view_payroll_estimate(tmp_path, monkeypatch):
+    from datetime import date
+    from decimal import Decimal
+
+    from models.employee import Employee
+    from models.employment import EmploymentTerms
+
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    test_repo.save_user(
+        User(username="admin", password_hash="unused", role="admin")
+    )
+    test_repo.save_employee(
+        Employee(
+            employee_id="E001",
+            name="山田太郎",
+            employment_type="正社員",
+            hire_date=date(2025, 1, 1),
+            pay_type="月給",
+            monthly_salary=Decimal("200000"),
+        )
+    )
+    test_repo.save_terms(
+        EmploymentTerms(
+            "E001",
+            monthly_hourly_divisor=Decimal("160"),
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "admin"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.get(
+        "/predictions/payroll-estimate",
+        params={
+            "year_month": "2026-09",
+            "as_of": "2026-09-10",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["reference_only"] is True
+    assert response.json()["used_for_payroll"] is False
+    assert response.json()["items"][0]["employee_id"] == "E001"
+    assert response.json()["items"][0]["employee_name"] == "山田太郎"
+    assert response.json()["items"][0]["gross_pay"] == "200000"

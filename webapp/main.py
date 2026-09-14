@@ -45,6 +45,7 @@ from services.payslip_service import export_pdf
 from services.prediction_service import (
     build_attendance_review,
     build_overtime_forecast,
+    build_payroll_estimate,
 )
 from services.time_service import format_minutes
 from services.ai_service import OllamaAssistant
@@ -220,7 +221,40 @@ def payroll_estimate_predictions(
             detail="as_of must be within year_month",
         )
 
-    return {"items": []}
+    items = []
+
+    for employee in repo.employees():
+        records = repo.work_records(
+            employee.employee_id,
+            year_month,
+        )
+        allowances, deductions, transport = repo.monthly_inputs(
+            employee.employee_id,
+            year_month,
+        )
+        estimate = build_payroll_estimate(
+            employee=employee,
+            terms=repo.terms(employee.employee_id),
+            records=records,
+            allowances=allowances,
+            transport=transport,
+            other_deductions=deductions,
+            year_month=year_month,
+            as_of=parsed_as_of,
+        )
+        items.append(
+            {
+                "employee_id": employee.employee_id,
+                "employee_name": employee.name,
+                **estimate,
+            }
+        )
+
+    return {
+        "reference_only": True,
+        "used_for_payroll": False,
+        "items": items,
+    }
 
 
 @app.get("/predictions/attendance-review")
