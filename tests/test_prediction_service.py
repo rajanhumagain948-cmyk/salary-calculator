@@ -504,3 +504,17 @@ def test_payroll_processing_risk_marks_warnings_medium():
         "level": "medium",
         "reasons": ["標準報酬月額を確認してください"],
     }
+
+
+def test_payroll_processing_risk_is_none_without_issues():
+    from services.prediction_service import build_payroll_processing_risk
+
+    risk = build_payroll_processing_risk(
+        warnings=[],
+        blocking_issues=[],
+    )
+
+    assert risk == {
+        "level": "none",
+        "reasons": [],
+    }
