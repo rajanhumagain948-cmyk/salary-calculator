@@ -469,3 +469,7 @@ def test_leave_trend_summarizes_approved_days_for_target_year():
 
     assert trend["approved_request_count"] == 2
     assert trend["approved_days"] == Decimal("1.5")
+    assert trend["monthly_approved_days"] == {
+        "2026-02": Decimal("1"),
+        "2026-07": Decimal("0.5"),
+    }

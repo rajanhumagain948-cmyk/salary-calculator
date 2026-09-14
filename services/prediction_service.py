@@ -187,7 +187,19 @@ def build_leave_trend(
         Decimal("0"),
     )
 
+    monthly_approved_days: dict[str, Decimal] = {}
+    for request in approved:
+        year_month = request.leave_date.strftime("%Y-%m")
+        monthly_approved_days[year_month] = (
+            monthly_approved_days.get(year_month, Decimal("0"))
+            + leave_request_days(
+                request,
+                standard_daily_minutes,
+            )
+        )
+
     return {
         "approved_request_count": len(approved),
         "approved_days": approved_days,
+        "monthly_approved_days": monthly_approved_days,
     }
