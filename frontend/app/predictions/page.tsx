@@ -43,6 +43,14 @@ type PayrollEstimate = {
   error?: string;
 };
 
+type LeaveTrend = {
+  employee_id: string;
+  employee_name: string;
+  approved_request_count: number;
+  approved_days: string;
+  monthly_approved_days: Record<string, string>;
+};
+
 type PayrollEstimateSummary = {
   gross_pay_reference_total: string;
   included_count: number;
@@ -71,6 +79,7 @@ export default function PredictionsPage() {
   const [payrollMethod, setPayrollMethod] = useState("");
   const [payrollSummary, setPayrollSummary] =
     useState<PayrollEstimateSummary | null>(null);
+  const [leaveTrends, setLeaveTrends] = useState<LeaveTrend[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -155,6 +164,31 @@ export default function PredictionsPage() {
         typeof payrollData.method === "string" ? payrollData.method : ""
       );
       setPayrollSummary(payrollData.summary ?? null);
+
+      const leaveParams = new URLSearchParams({
+        year: yearMonth.slice(0, 4),
+      });
+      const leaveRes = await fetch(
+        `${API_BASE}/predictions/leave-trend?${leaveParams.toString()}`,
+        {
+          credentials: "include",
+          cache: "no-store",
+        }
+      );
+      const leaveData = await leaveRes.json().catch(() => null);
+
+      if (!leaveRes.ok) {
+        setError(
+          leaveData?.detail
+            ? `有給取得傾向を取得できませんでした: ${leaveData.detail}`
+            : `有給取得傾向を取得できませんでした: ${leaveRes.status}`
+        );
+        return;
+      }
+
+      setLeaveTrends(
+        Array.isArray(leaveData.items) ? leaveData.items : []
+      );
     } catch {
       setError("予測データの取得中にエラーが発生しました。");
     } finally {
@@ -239,6 +273,29 @@ export default function PredictionsPage() {
                 ))}
               </div>
             ))}
+          </div>
+        )}
+
+        {!error && leaveTrends.length > 0 && (
+          <div
+            style={{
+              marginTop: 24,
+              padding: 16,
+              border: "1px solid rgba(52,211,153,0.18)",
+              borderRadius: 14,
+            }}
+          >
+            <div style={{ color: "#8fa6bf", fontSize: 13 }}>
+              {yearMonth.slice(0, 4)}年 有給取得実績
+            </div>
+            <div style={{ marginTop: 6, fontSize: 24, fontWeight: 800 }}>
+              {leaveTrends
+                .reduce(
+                  (total, item) => total + Number(item.approved_days),
+                  0
+                )
+                .toLocaleString()}日
+            </div>
           </div>
         )}
 
