@@ -234,9 +234,15 @@ export default function PredictionsPage() {
         )}
 
         {!error && payrollMethod && (
-          <p style={{ marginTop: 20, color: "#8fa6bf" }}>
-            給与参考試算方法: {payrollMethod}
-          </p>
+          <div style={{ marginTop: 20 }}>
+            <p style={{ margin: 0, color: "#8fa6bf" }}>
+              給与参考試算方法: {payrollMethod}
+            </p>
+            <p style={{ margin: "6px 0 0", color: "#fbbf24" }}>
+              この金額は基準日時点の参考試算です。
+              将来の勤務を含む月末確定額ではありません。
+            </p>
+          </div>
         )}
 
         {!error && payrollEstimates.length > 0 && (
