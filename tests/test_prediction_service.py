@@ -263,6 +263,7 @@ def test_build_payroll_estimate_uses_existing_payroll_calculation():
 
     assert estimate["reference_only"] is True
     assert estimate["used_for_payroll"] is False
+    assert estimate["forecastable"] is True
     assert estimate["gross_pay"] == "200000"
     assert estimate["total_deductions"] is not None
     assert estimate["net_pay"] is not None
