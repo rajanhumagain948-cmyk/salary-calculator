@@ -570,3 +570,8 @@ def test_payroll_estimate_reports_employee_calculation_error(
     assert item["employee_name"] == "山田太郎"
     assert item["status"] == "計算不可"
     assert item["error"] == "時給・月給は0円以上で入力してください。"
+    assert response.json()["summary"] == {
+        "gross_pay_reference_total": "0",
+        "included_count": 0,
+        "excluded_count": 1,
+    }
