@@ -459,3 +459,57 @@ def test_admin_can_view_payroll_estimate(tmp_path, monkeypatch):
     assert response.json()["items"][0]["employee_id"] == "E001"
     assert response.json()["items"][0]["employee_name"] == "山田太郎"
     assert response.json()["items"][0]["gross_pay"] == "200000"
+
+
+def test_payroll_estimate_preserves_finalized_payroll(tmp_path, monkeypatch):
+    from datetime import date
+    from decimal import Decimal
+
+    from models.employee import Employee
+    from models.payroll import PayrollResult, TimeClassification
+
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    test_repo.save_user(
+        User(username="admin", password_hash="unused", role="admin")
+    )
+    test_repo.save_employee(
+        Employee(
+            employee_id="E001",
+            name="山田太郎",
+            employment_type="正社員",
+            hire_date=date(2025, 1, 1),
+            pay_type="月給",
+            monthly_salary=Decimal("999999"),
+        )
+    )
+    test_repo.save_payroll_result(
+        PayrollResult(
+            employee_id="E001",
+            year_month="2026-09",
+            classification=TimeClassification(),
+            payments={"基本給": Decimal("200000")},
+            deductions={"所得税": Decimal("5000")},
+            finalized=True,
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "admin"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.get(
+        "/predictions/payroll-estimate",
+        params={
+            "year_month": "2026-09",
+            "as_of": "2026-09-10",
+        },
+    )
+
+    assert response.status_code == 200
+    item = response.json()["items"][0]
+    assert item["status"] == "確定済"
+    assert item["gross_pay"] == "200000"
+    assert item["total_deductions"] == "5000"
+    assert item["net_pay"] == "195000"

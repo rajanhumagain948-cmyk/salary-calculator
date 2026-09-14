@@ -224,6 +224,27 @@ def payroll_estimate_predictions(
     items = []
 
     for employee in repo.employees():
+        existing = repo.payroll_result(
+            employee.employee_id,
+            year_month,
+        )
+        if existing is not None and existing.finalized:
+            items.append(
+                {
+                    "employee_id": employee.employee_id,
+                    "employee_name": employee.name,
+                    "status": "確定済",
+                    "reference_only": True,
+                    "used_for_payroll": False,
+                    "gross_pay": str(existing.gross_pay),
+                    "total_deductions": str(existing.total_deductions),
+                    "net_pay": str(existing.net_pay),
+                    "warnings": list(existing.warnings),
+                    "blocking_issues": list(existing.blocking_issues),
+                }
+            )
+            continue
+
         records = repo.work_records(
             employee.employee_id,
             year_month,
@@ -246,6 +267,7 @@ def payroll_estimate_predictions(
             {
                 "employee_id": employee.employee_id,
                 "employee_name": employee.name,
+                "status": "参考試算",
                 **estimate,
             }
         )
