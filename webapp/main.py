@@ -47,6 +47,7 @@ from services.prediction_service import (
     build_overtime_forecast,
     build_payroll_estimate,
     build_leave_trend,
+    build_payroll_processing_risk,
     summarize_payroll_estimates,
 )
 from services.time_service import format_minutes
@@ -208,7 +209,32 @@ def payroll_risk_predictions(
             detail="year_month must be YYYY-MM",
         )
 
-    return {"items": []}
+    employee_names = {
+        employee.employee_id: employee.name
+        for employee in repo.employees()
+    }
+    items = []
+
+    for payroll in repo.payroll_results(year_month):
+        risk = build_payroll_processing_risk(
+            warnings=list(payroll.warnings),
+            blocking_issues=list(payroll.blocking_issues),
+        )
+        if risk["level"] == "none":
+            continue
+
+        items.append(
+            {
+                "employee_id": payroll.employee_id,
+                "employee_name": employee_names.get(
+                    payroll.employee_id,
+                    payroll.employee_id,
+                ),
+                **risk,
+            }
+        )
+
+    return {"items": items}
 
 
 @app.get("/predictions/leave-trend")

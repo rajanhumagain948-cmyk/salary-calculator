@@ -743,3 +743,83 @@ def test_payroll_risks_reject_invalid_year_month(tmp_path, monkeypatch):
 
     assert response.status_code == 400
     assert response.json()["detail"] == "year_month must be YYYY-MM"
+
+
+def test_admin_can_view_payroll_processing_risks(tmp_path, monkeypatch):
+    from decimal import Decimal
+
+    from models.employee import Employee
+    from models.payroll import PayrollResult, TimeClassification
+
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    test_repo.save_user(
+        User(username="admin", password_hash="unused", role="admin")
+    )
+
+    for employee_id, name in (
+        ("E001", "要確認A"),
+        ("E002", "要確認B"),
+        ("E003", "問題なし"),
+    ):
+        test_repo.save_employee(
+            Employee(
+                employee_id=employee_id,
+                name=name,
+                employment_type="正社員",
+                hire_date=__import__("datetime").date(2025, 1, 1),
+                pay_type="月給",
+                monthly_salary=Decimal("200000"),
+            )
+        )
+
+    test_repo.save_payroll_result(
+        PayrollResult(
+            employee_id="E001",
+            year_month="2026-09",
+            classification=TimeClassification(),
+            warnings=["警告A"],
+            blocking_issues=["ブロッキングA"],
+        )
+    )
+    test_repo.save_payroll_result(
+        PayrollResult(
+            employee_id="E002",
+            year_month="2026-09",
+            classification=TimeClassification(),
+            warnings=["警告B"],
+        )
+    )
+    test_repo.save_payroll_result(
+        PayrollResult(
+            employee_id="E003",
+            year_month="2026-09",
+            classification=TimeClassification(),
+        )
+    )
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "admin"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.get(
+        "/predictions/payroll-risk",
+        params={"year_month": "2026-09"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["items"] == [
+        {
+            "employee_id": "E001",
+            "employee_name": "要確認A",
+            "level": "high",
+            "reasons": ["ブロッキングA", "警告A"],
+        },
+        {
+            "employee_id": "E002",
+            "employee_name": "要確認B",
+            "level": "medium",
+            "reasons": ["警告B"],
+        },
+    ]
