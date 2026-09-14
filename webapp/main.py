@@ -245,24 +245,36 @@ def payroll_estimate_predictions(
             )
             continue
 
-        records = repo.work_records(
-            employee.employee_id,
-            year_month,
-        )
-        allowances, deductions, transport = repo.monthly_inputs(
-            employee.employee_id,
-            year_month,
-        )
-        estimate = build_payroll_estimate(
-            employee=employee,
-            terms=repo.terms(employee.employee_id),
-            records=records,
-            allowances=allowances,
-            transport=transport,
-            other_deductions=deductions,
-            year_month=year_month,
-            as_of=parsed_as_of,
-        )
+        try:
+            records = repo.work_records(
+                employee.employee_id,
+                year_month,
+            )
+            allowances, deductions, transport = repo.monthly_inputs(
+                employee.employee_id,
+                year_month,
+            )
+            estimate = build_payroll_estimate(
+                employee=employee,
+                terms=repo.terms(employee.employee_id),
+                records=records,
+                allowances=allowances,
+                transport=transport,
+                other_deductions=deductions,
+                year_month=year_month,
+                as_of=parsed_as_of,
+            )
+        except (ValueError, TypeError) as error:
+            items.append(
+                {
+                    "employee_id": employee.employee_id,
+                    "employee_name": employee.name,
+                    "status": "計算不可",
+                    "error": str(error),
+                }
+            )
+            continue
+
         items.append(
             {
                 "employee_id": employee.employee_id,
