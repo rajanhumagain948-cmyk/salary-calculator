@@ -462,6 +462,7 @@ def test_admin_can_view_payroll_estimate(tmp_path, monkeypatch):
     assert response.json()["items"][0]["employee_id"] == "E001"
     assert response.json()["items"][0]["employee_name"] == "山田太郎"
     assert response.json()["items"][0]["gross_pay"] == "200000"
+    assert test_repo.payroll_result("E001", "2026-09") is None
 
 
 def test_payroll_estimate_preserves_finalized_payroll(tmp_path, monkeypatch):
