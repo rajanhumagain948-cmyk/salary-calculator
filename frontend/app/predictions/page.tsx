@@ -1125,49 +1125,176 @@ export default function PredictionsPage() {
           </section>
         )}
 
-        {!error && method && (
-          <p style={{ marginTop: 20, color: "#8fa6bf" }}>
-            予測方法: {method}
-          </p>
-        )}
-
         {!error && items.length > 0 && (
-          <div
+          <section
             style={{
-              display: "grid",
-              gap: 12,
               marginTop: 24,
+              padding: 20,
+              border: "1px solid rgba(167,139,250,0.16)",
+              borderRadius: 20,
+              background:
+                "linear-gradient(145deg, rgba(76,29,149,0.10), rgba(10,24,40,0.76))",
             }}
           >
-            <div style={{ color: "#8fa6bf" }}>
-              予測対象: {items.length}名
-            </div>
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: 14,
+                marginBottom: 18,
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    color: "#a78bfa",
+                    fontSize: 11,
+                    fontWeight: 900,
+                    letterSpacing: "0.14em",
+                  }}
+                >
+                  OVERTIME FORECAST
+                </div>
+                <h2 style={{ margin: "5px 0 0", fontSize: 20 }}>
+                  月末残業フォーキャスト
+                </h2>
+              </div>
 
-            {items.map((item) => (
-              <div
-                key={item.employee_id}
+              <span
                 style={{
-                  padding: 16,
-                  border: "1px solid rgba(148,180,216,0.16)",
-                  borderRadius: 14,
+                  padding: "6px 10px",
+                  borderRadius: 999,
+                  background: "rgba(167,139,250,0.09)",
+                  color: "#c4b5fd",
+                  fontSize: 11,
                 }}
               >
-                <strong>
-                  {item.employee_id} / {item.employee_name}
-                </strong>
+                {items.length} EMPLOYEES
+              </span>
+            </div>
 
-                <div style={{ marginTop: 10 }}>
-                  実績残業: {formatMinutes(item.actual_overtime_minutes)}
-                </div>
-                <div>
-                  着地予測: {formatMinutes(item.forecast_overtime_minutes)}
-                </div>
-                <div style={{ color: "#8fa6bf" }}>
-                  今後の確定シフト: {item.future_confirmed_shift_days}日
-                </div>
+            {method && (
+              <div
+                style={{
+                  marginBottom: 14,
+                  color: "#71859d",
+                  fontSize: 11,
+                }}
+              >
+                MODEL · {method}
               </div>
-            ))}
-          </div>
+            )}
+
+            <div style={{ display: "grid", gap: 10 }}>
+              {items
+                .slice()
+                .sort(
+                  (a, b) =>
+                    b.forecast_overtime_minutes -
+                    a.forecast_overtime_minutes
+                )
+                .map((item, index) => {
+                  const increase = Math.max(
+                    0,
+                    item.forecast_overtime_minutes -
+                      item.actual_overtime_minutes
+                  );
+
+                  return (
+                    <div
+                      key={item.employee_id}
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns:
+                          "minmax(160px, 1.4fr) repeat(3, minmax(100px, 1fr))",
+                        gap: 12,
+                        alignItems: "center",
+                        padding: 15,
+                        border: "1px solid rgba(167,139,250,0.12)",
+                        borderRadius: 14,
+                        background: "rgba(4,13,27,0.26)",
+                      }}
+                    >
+                      <div>
+                        <div
+                          style={{
+                            color: "#6f839b",
+                            fontSize: 10,
+                            fontWeight: 800,
+                          }}
+                        >
+                          #{index + 1}
+                        </div>
+                        <strong style={{ display: "block", marginTop: 3 }}>
+                          {item.employee_name}
+                        </strong>
+                        <span style={{ color: "#667b94", fontSize: 11 }}>
+                          {item.employee_id}
+                        </span>
+                      </div>
+
+                      <div>
+                        <div style={{ color: "#687d96", fontSize: 10 }}>
+                          現在
+                        </div>
+                        <div style={{ marginTop: 3, fontWeight: 800 }}>
+                          {formatMinutes(item.actual_overtime_minutes)}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div style={{ color: "#8d79bb", fontSize: 10 }}>
+                          月末着地
+                        </div>
+                        <div
+                          style={{
+                            marginTop: 3,
+                            color: "#c4b5fd",
+                            fontWeight: 900,
+                            fontSize: 16,
+                          }}
+                        >
+                          {formatMinutes(item.forecast_overtime_minutes)}
+                        </div>
+                        {increase > 0 && (
+                          <div
+                            style={{
+                              marginTop: 2,
+                              color: "#8b7aaa",
+                              fontSize: 10,
+                            }}
+                          >
+                            +{formatMinutes(increase)}
+                          </div>
+                        )}
+                      </div>
+
+                      <div>
+                        <div style={{ color: "#687d96", fontSize: 10 }}>
+                          今後の確定シフト
+                        </div>
+                        <div style={{ marginTop: 3, fontWeight: 800 }}>
+                          {item.future_confirmed_shift_days}日
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+
+            <div
+              style={{
+                marginTop: 14,
+                color: "#657991",
+                fontSize: 10,
+                lineHeight: 1.6,
+              }}
+            >
+              参考予測です。実際の勤怠・給与計算結果を確定するものではありません。
+            </div>
+          </section>
         )}
       </main>
     </AuthGuard>
