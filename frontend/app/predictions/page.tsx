@@ -751,16 +751,55 @@ export default function PredictionsPage() {
         )}
 
         {!error && leaveTrends.length > 0 && (
-          <div
+          <section
             style={{
               marginTop: 24,
-              padding: 16,
-              border: "1px solid rgba(52,211,153,0.18)",
-              borderRadius: 14,
+              padding: 20,
+              border: "1px solid rgba(52,211,153,0.16)",
+              borderRadius: 20,
+              background:
+                "linear-gradient(145deg, rgba(6,78,59,0.10), rgba(10,24,40,0.72))",
             }}
           >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: 12,
+                marginBottom: 16,
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    color: "#34d399",
+                    fontSize: 11,
+                    fontWeight: 900,
+                    letterSpacing: "0.14em",
+                  }}
+                >
+                  LEAVE TREND
+                </div>
+                <h2 style={{ margin: "5px 0 0", fontSize: 20 }}>
+                  有給取得トレンド
+                </h2>
+              </div>
+              <span
+                style={{
+                  padding: "6px 10px",
+                  borderRadius: 999,
+                  background: "rgba(52,211,153,0.09)",
+                  color: "#86efac",
+                  fontSize: 11,
+                }}
+              >
+                承認済み実績
+              </span>
+            </div>
+
             <div style={{ color: "#8fa6bf", fontSize: 13 }}>
-              {yearMonth.slice(0, 4)}年 有給取得実績
+              {yearMonth.slice(0, 4)}年 累計取得
             </div>
             <div style={{ marginTop: 6, fontSize: 24, fontWeight: 800 }}>
               {leaveTrends
@@ -809,7 +848,7 @@ export default function PredictionsPage() {
                   </span>
                 ))}
             </div>
-          </div>
+          </section>
         )}
 
         {!error && payrollSummary && (
