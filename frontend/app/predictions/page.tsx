@@ -852,100 +852,269 @@ export default function PredictionsPage() {
         )}
 
         {!error && payrollSummary && (
-          <div
+          <section
             style={{
               marginTop: 24,
-              padding: 16,
-              border: "1px solid rgba(129,140,248,0.22)",
-              borderRadius: 14,
+              padding: 20,
+              border: "1px solid rgba(96,165,250,0.16)",
+              borderRadius: 20,
+              background:
+                "linear-gradient(145deg, rgba(30,64,175,0.10), rgba(10,24,40,0.76))",
             }}
           >
-            <div style={{ color: "#8fa6bf", fontSize: 13 }}>
-              総支給参考額
-            </div>
-            <div style={{ marginTop: 6, fontSize: 24, fontWeight: 800 }}>
-              {Number(payrollSummary.gross_pay_reference_total).toLocaleString()}円
-            </div>
-            <div style={{ marginTop: 6, color: "#8fa6bf", fontSize: 12 }}>
-              集計対象 {payrollSummary.included_count}名 / 対象外{" "}
-              {payrollSummary.excluded_count}名
-            </div>
-          </div>
-        )}
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: 14,
+                marginBottom: 18,
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    color: "#60a5fa",
+                    fontSize: 11,
+                    fontWeight: 900,
+                    letterSpacing: "0.14em",
+                  }}
+                >
+                  PAYROLL SNAPSHOT
+                </div>
+                <h2 style={{ margin: "5px 0 0", fontSize: 20 }}>
+                  給与の現在地
+                </h2>
+              </div>
 
-        {!error && payrollMethod && (
-          <div style={{ marginTop: 20 }}>
-            <p style={{ margin: 0, color: "#8fa6bf" }}>
-              給与参考試算方法: {payrollMethod}
-            </p>
-            <p style={{ margin: "6px 0 0", color: "#fbbf24" }}>
-              この金額は基準日時点の参考試算です。
-              将来の勤務を含む月末確定額ではありません。
-            </p>
-          </div>
-        )}
-
-        {!error && payrollEstimates.length > 0 && (
-          <div style={{ marginTop: 24 }}>
-            <div style={{ color: "#a5b4fc", marginBottom: 10 }}>
-              給与参考試算:{" "}
-              {payrollEstimates.filter((item) => item.status === "参考試算").length}名
-              {" / "}
-              確定済:{" "}
-              {payrollEstimates.filter((item) => item.status === "確定済").length}名
-              {" / "}
-              計算不可:{" "}
-              {payrollEstimates.filter((item) => item.status === "計算不可").length}名
+              <div style={{ textAlign: "right" }}>
+                <div style={{ color: "#8094ac", fontSize: 11 }}>
+                  総支給参考額
+                </div>
+                <div
+                  style={{
+                    marginTop: 3,
+                    color: "#93c5fd",
+                    fontSize: 25,
+                    fontWeight: 900,
+                  }}
+                >
+                  {Number(
+                    payrollSummary.gross_pay_reference_total
+                  ).toLocaleString()}円
+                </div>
+                <div style={{ color: "#667b94", fontSize: 11 }}>
+                  集計 {payrollSummary.included_count}名 / 対象外{" "}
+                  {payrollSummary.excluded_count}名
+                </div>
+              </div>
             </div>
 
-            <div style={{ display: "grid", gap: 10 }}>
+            {payrollMethod && (
+              <div
+                style={{
+                  marginBottom: 16,
+                  padding: "10px 12px",
+                  borderRadius: 12,
+                  background: "rgba(251,191,36,0.055)",
+                  border: "1px solid rgba(251,191,36,0.10)",
+                }}
+              >
+                <div style={{ color: "#9aabc0", fontSize: 11 }}>
+                  試算方法 · {payrollMethod}
+                </div>
+                <div
+                  style={{
+                    marginTop: 4,
+                    color: "#d7ad58",
+                    fontSize: 11,
+                  }}
+                >
+                  基準日時点の参考試算です。将来勤務を含む月末確定額ではありません。
+                </div>
+              </div>
+            )}
+
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 7,
+                marginBottom: 12,
+              }}
+            >
+              {[
+                [
+                  "参考試算",
+                  payrollEstimates.filter(
+                    (item) => item.status === "参考試算"
+                  ).length,
+                  "#a5b4fc",
+                ],
+                [
+                  "確定済",
+                  payrollEstimates.filter(
+                    (item) => item.status === "確定済"
+                  ).length,
+                  "#86efac",
+                ],
+                [
+                  "計算不可",
+                  payrollEstimates.filter(
+                    (item) => item.status === "計算不可"
+                  ).length,
+                  "#fb7185",
+                ],
+              ].map(([label, count, color]) => (
+                <span
+                  key={String(label)}
+                  style={{
+                    padding: "5px 9px",
+                    borderRadius: 999,
+                    background: "rgba(255,255,255,0.04)",
+                    color: String(color),
+                    fontSize: 11,
+                  }}
+                >
+                  {label} {count}名
+                </span>
+              ))}
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  "repeat(auto-fit, minmax(290px, 1fr))",
+                gap: 10,
+              }}
+            >
               {payrollEstimates.map((item) => (
                 <div
                   key={item.employee_id}
                   style={{
-                    padding: 14,
-                    border: "1px solid rgba(129,140,248,0.18)",
-                    borderRadius: 12,
+                    padding: 15,
+                    border:
+                      item.status === "計算不可" ||
+                      item.forecastable === false
+                        ? "1px solid rgba(251,191,36,0.18)"
+                        : "1px solid rgba(96,165,250,0.13)",
+                    borderRadius: 14,
+                    background: "rgba(4,13,27,0.28)",
                   }}
                 >
-                  <strong>
-                    {item.employee_id} / {item.employee_name}
-                  </strong>
-                  <span style={{ marginLeft: 10, color: "#a5b4fc" }}>
-                    {item.status}
-                  </span>
-
-                  {item.status === "参考試算" && (
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 10,
+                    }}
+                  >
+                    <strong>
+                      {item.employee_name}
+                      <span
+                        style={{
+                          marginLeft: 7,
+                          color: "#6f839b",
+                          fontSize: 11,
+                        }}
+                      >
+                        {item.employee_id}
+                      </span>
+                    </strong>
                     <span
                       style={{
-                        marginLeft: 10,
-                        color: item.forecastable ? "#86efac" : "#fbbf24",
+                        color:
+                          item.status === "計算不可"
+                            ? "#fb7185"
+                            : item.status === "確定済"
+                              ? "#86efac"
+                              : item.forecastable
+                                ? "#a5b4fc"
+                                : "#fbbf24",
+                        fontSize: 11,
+                        fontWeight: 800,
                       }}
                     >
-                      {item.forecastable ? "予測可能" : "要設定確認"}
+                      {item.status === "参考試算"
+                        ? item.forecastable
+                          ? "参考試算"
+                          : "要設定確認"
+                        : item.status}
                     </span>
-                  )}
+                  </div>
 
                   {item.status === "計算不可" ? (
-                    <div style={{ marginTop: 8, color: "#ff9d9d" }}>
+                    <div
+                      style={{
+                        marginTop: 10,
+                        color: "#ff9d9d",
+                        fontSize: 12,
+                      }}
+                    >
                       {item.error ?? "計算できませんでした。"}
                     </div>
                   ) : (
                     <>
-                      <div style={{ marginTop: 8 }}>
-                        総支給: {item.gross_pay}円 / 控除:{" "}
-                        {item.total_deductions}円 / 手取り: {item.net_pay}円
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "repeat(3, 1fr)",
+                          gap: 6,
+                          marginTop: 12,
+                        }}
+                      >
+                        {[
+                          ["総支給", item.gross_pay],
+                          ["控除", item.total_deductions],
+                          ["手取り", item.net_pay],
+                        ].map(([label, value]) => (
+                          <div key={label}>
+                            <div
+                              style={{
+                                color: "#687d96",
+                                fontSize: 10,
+                              }}
+                            >
+                              {label}
+                            </div>
+                            <div
+                              style={{
+                                marginTop: 2,
+                                fontSize: 13,
+                                fontWeight: 800,
+                              }}
+                            >
+                              {Number(value ?? 0).toLocaleString()}円
+                            </div>
+                          </div>
+                        ))}
                       </div>
 
                       {(item.warnings?.length ?? 0) > 0 && (
-                        <div style={{ marginTop: 6, color: "#fbbf24" }}>
-                          warning: {item.warnings?.join(" / ")}
+                        <div
+                          style={{
+                            marginTop: 10,
+                            color: "#d9ad55",
+                            fontSize: 11,
+                            lineHeight: 1.6,
+                          }}
+                        >
+                          △ {item.warnings?.join(" / ")}
                         </div>
                       )}
 
                       {(item.blocking_issues?.length ?? 0) > 0 && (
-                        <div style={{ marginTop: 6, color: "#fb7185" }}>
-                          blocking: {item.blocking_issues?.join(" / ")}
+                        <div
+                          style={{
+                            marginTop: 7,
+                            color: "#fb7185",
+                            fontSize: 11,
+                            lineHeight: 1.6,
+                          }}
+                        >
+                          ! {item.blocking_issues?.join(" / ")}
                         </div>
                       )}
                     </>
@@ -953,7 +1122,7 @@ export default function PredictionsPage() {
                 </div>
               ))}
             </div>
-          </div>
+          </section>
         )}
 
         {!error && method && (
