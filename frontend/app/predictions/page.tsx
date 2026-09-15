@@ -538,75 +538,216 @@ export default function PredictionsPage() {
         {error && <p style={{ color: "#ff9d9d" }}>{error}</p>}
 
         {!error && (
-          <div style={{ marginTop: 20 }}>
-            <div style={{ color: "#fbbf24", marginBottom: 8 }}>
-              勤怠要確認: {attendanceReviews.length}名
+          <section
+            style={{
+              marginTop: 26,
+              padding: 20,
+              border: "1px solid rgba(251,113,133,0.16)",
+              borderRadius: 20,
+              background:
+                "linear-gradient(145deg, rgba(42,20,38,0.42), rgba(12,24,42,0.76) 55%)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+                marginBottom: 16,
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    color: "#fb7185",
+                    fontSize: 11,
+                    fontWeight: 900,
+                    letterSpacing: "0.14em",
+                  }}
+                >
+                  PRIORITY REVIEW
+                </div>
+                <h2 style={{ margin: "5px 0 0", fontSize: 20 }}>
+                  今月、先に確認するポイント
+                </h2>
+              </div>
+
+              <div style={{ display: "flex", gap: 7 }}>
+                <span
+                  style={{
+                    padding: "6px 9px",
+                    borderRadius: 999,
+                    background: "rgba(251,113,133,0.10)",
+                    color: "#fb7185",
+                    fontSize: 11,
+                  }}
+                >
+                  HIGH{" "}
+                  {payrollRisks.filter((risk) => risk.level === "high").length}
+                </span>
+                <span
+                  style={{
+                    padding: "6px 9px",
+                    borderRadius: 999,
+                    background: "rgba(251,191,36,0.09)",
+                    color: "#fbbf24",
+                    fontSize: 11,
+                  }}
+                >
+                  MEDIUM{" "}
+                  {payrollRisks.filter((risk) => risk.level === "medium").length}
+                </span>
+              </div>
             </div>
 
-            {attendanceReviews.map((review) => (
+            {payrollRisks.length === 0 && attendanceReviews.length === 0 ? (
               <div
-                key={review.employee_id}
                 style={{
-                  marginBottom: 10,
-                  padding: 14,
-                  border: "1px solid rgba(251,191,36,0.18)",
-                  borderRadius: 12,
+                  padding: 18,
+                  borderRadius: 14,
+                  background: "rgba(52,211,153,0.06)",
+                  color: "#86efac",
                 }}
               >
-                <strong>
-                  {review.employee_id} / {review.employee_name}
-                </strong>
+                ✓ 現在、優先確認が必要な項目はありません。
+              </div>
+            ) : (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns:
+                    "repeat(auto-fit, minmax(300px, 1fr))",
+                  gap: 12,
+                }}
+              >
+                {payrollRisks
+                  .slice()
+                  .sort((a, b) =>
+                    a.level === b.level ? 0 : a.level === "high" ? -1 : 1
+                  )
+                  .map((risk) => (
+                    <div
+                      key={`payroll-${risk.employee_id}`}
+                      style={{
+                        padding: 15,
+                        borderRadius: 15,
+                        border:
+                          risk.level === "high"
+                            ? "1px solid rgba(251,113,133,0.28)"
+                            : "1px solid rgba(251,191,36,0.20)",
+                        background:
+                          risk.level === "high"
+                            ? "rgba(127,29,29,0.10)"
+                            : "rgba(120,84,20,0.08)",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          gap: 10,
+                        }}
+                      >
+                        <strong>
+                          {risk.employee_name}
+                          <span
+                            style={{
+                              marginLeft: 7,
+                              color: "#70849c",
+                              fontSize: 11,
+                            }}
+                          >
+                            {risk.employee_id}
+                          </span>
+                        </strong>
+                        <span
+                          style={{
+                            color:
+                              risk.level === "high" ? "#fb7185" : "#fbbf24",
+                            fontSize: 11,
+                            fontWeight: 900,
+                          }}
+                        >
+                          給与 {risk.level.toUpperCase()}
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          marginTop: 9,
+                          color: "#c5d0df",
+                          fontSize: 13,
+                          lineHeight: 1.65,
+                        }}
+                      >
+                        {risk.reasons.join(" / ")}
+                      </div>
+                    </div>
+                  ))}
 
-                {review.warnings.map((warning) => (
+                {attendanceReviews.map((review) => (
                   <div
-                    key={warning.work_date}
-                    style={{ marginTop: 8, color: "#c7d2e3" }}
+                    key={`attendance-${review.employee_id}`}
+                    style={{
+                      padding: 15,
+                      borderRadius: 15,
+                      border: "1px solid rgba(96,165,250,0.18)",
+                      background: "rgba(30,64,175,0.07)",
+                    }}
                   >
-                    {warning.work_date}: {warning.messages.join(" / ")}
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: 10,
+                      }}
+                    >
+                      <strong>
+                        {review.employee_name}
+                        <span
+                          style={{
+                            marginLeft: 7,
+                            color: "#70849c",
+                            fontSize: 11,
+                          }}
+                        >
+                          {review.employee_id}
+                        </span>
+                      </strong>
+                      <span
+                        style={{
+                          color: "#60a5fa",
+                          fontSize: 11,
+                          fontWeight: 900,
+                        }}
+                      >
+                        勤怠 CHECK
+                      </span>
+                    </div>
+
+                    {review.warnings.map((warning) => (
+                      <div
+                        key={warning.work_date}
+                        style={{
+                          marginTop: 9,
+                          color: "#c5d0df",
+                          fontSize: 13,
+                          lineHeight: 1.65,
+                        }}
+                      >
+                        <span style={{ color: "#7f94ad" }}>
+                          {warning.work_date}
+                        </span>
+                        {" · "}
+                        {warning.messages.join(" / ")}
+                      </div>
+                    ))}
                   </div>
                 ))}
               </div>
-            ))}
-          </div>
-        )}
-
-        {!error && (
-          <div style={{ marginTop: 24 }}>
-            <div style={{ color: "#fb7185", marginBottom: 10 }}>
-              給与処理 要確認: {payrollRisks.length}名
-            </div>
-
-            <div style={{ display: "grid", gap: 10 }}>
-              {payrollRisks.map((risk) => (
-                <div
-                  key={risk.employee_id}
-                  style={{
-                    padding: 14,
-                    border:
-                      risk.level === "high"
-                        ? "1px solid rgba(251,113,133,0.28)"
-                        : "1px solid rgba(251,191,36,0.22)",
-                    borderRadius: 12,
-                  }}
-                >
-                  <strong>
-                    {risk.employee_id} / {risk.employee_name}
-                  </strong>
-                  <span
-                    style={{
-                      marginLeft: 10,
-                      color: risk.level === "high" ? "#fb7185" : "#fbbf24",
-                    }}
-                  >
-                    {risk.level === "high" ? "HIGH" : "MEDIUM"}
-                  </span>
-                  <div style={{ marginTop: 8, color: "#c7d2e3" }}>
-                    {risk.reasons.join(" / ")}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+            )}
+          </section>
         )}
 
         {!error && leaveTrends.length > 0 && (
