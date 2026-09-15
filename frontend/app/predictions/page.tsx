@@ -228,48 +228,312 @@ export default function PredictionsPage() {
 
   return (
     <AuthGuard allow={["admin"]}>
-      <main style={{ padding: 24 }}>
-        <div style={{ color: "#8390ff", fontSize: 12, fontWeight: 800 }}>
-          会社側・参考予測
-        </div>
+      <main
+        style={{
+          maxWidth: 1180,
+          margin: "0 auto",
+          padding: "28px 20px 56px",
+        }}
+      >
+        <section
+          style={{
+            position: "relative",
+            overflow: "hidden",
+            padding: "30px 30px 26px",
+            border: "1px solid rgba(129,140,248,0.22)",
+            borderRadius: 24,
+            background:
+              "linear-gradient(135deg, rgba(16,27,55,0.98), rgba(15,30,48,0.96) 52%, rgba(42,25,72,0.94))",
+            boxShadow:
+              "0 24px 80px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.05)",
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              width: 300,
+              height: 300,
+              right: -70,
+              top: -150,
+              borderRadius: "50%",
+              background:
+                "radial-gradient(circle, rgba(139,92,246,0.34), rgba(59,130,246,0.10) 48%, transparent 70%)",
+              pointerEvents: "none",
+            }}
+          />
 
-        <h1>予測</h1>
+          <div style={{ position: "relative" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                color: "#a5b4fc",
+                fontSize: 12,
+                fontWeight: 900,
+                letterSpacing: "0.14em",
+              }}
+            >
+              <span
+                style={{
+                  display: "grid",
+                  placeItems: "center",
+                  width: 30,
+                  height: 30,
+                  borderRadius: 9,
+                  background: "linear-gradient(135deg,#6366f1,#a855f7)",
+                  color: "white",
+                  fontSize: 16,
+                }}
+              >
+                ↗
+              </span>
+              PREDICTION CENTER
+            </div>
 
-        <p style={{ color: "#8fa6bf", lineHeight: 1.7 }}>
-          勤怠実績と確定シフトをもとに、月末の残業時間の着地を参考予測します。
-        </p>
+            <h1
+              style={{
+                margin: "14px 0 8px",
+                fontSize: "clamp(30px, 4vw, 44px)",
+                letterSpacing: "-0.04em",
+              }}
+            >
+              月末を、先に見る。
+            </h1>
 
-        <p style={{ color: "#fbbf24" }}>
+            <p
+              style={{
+                maxWidth: 680,
+                margin: 0,
+                color: "#a8bad0",
+                lineHeight: 1.8,
+              }}
+            >
+              勤怠・給与・有給・確定シフトを横断して、
+              今月の着地と優先して確認すべきポイントを整理します。
+            </p>
+
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 8,
+                marginTop: 18,
+              }}
+            >
+              {["残業着地", "給与参考", "有給傾向", "確認リスク"].map(
+                (label) => (
+                  <span
+                    key={label}
+                    style={{
+                      padding: "6px 10px",
+                      borderRadius: 999,
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(165,180,252,0.12)",
+                      color: "#cad5e5",
+                      fontSize: 12,
+                    }}
+                  >
+                    {label}
+                  </span>
+                )
+              )}
+            </div>
+          </div>
+
+          <form
+            onSubmit={loadPredictions}
+            style={{
+              position: "relative",
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "end",
+              gap: 12,
+              marginTop: 26,
+              padding: 14,
+              borderRadius: 16,
+              background: "rgba(4,12,28,0.40)",
+              border: "1px solid rgba(148,180,216,0.12)",
+            }}
+          >
+            <label style={{ color: "#9fb1c7", fontSize: 12 }}>
+              対象月
+              <input
+                type="month"
+                value={yearMonth}
+                onChange={(e) => setYearMonth(e.target.value)}
+                required
+                style={{
+                  display: "block",
+                  marginTop: 6,
+                  padding: "9px 11px",
+                }}
+              />
+            </label>
+
+            <label style={{ color: "#9fb1c7", fontSize: 12 }}>
+              基準日
+              <input
+                type="date"
+                value={asOf}
+                onChange={(e) => setAsOf(e.target.value)}
+                required
+                style={{
+                  display: "block",
+                  marginTop: 6,
+                  padding: "9px 11px",
+                }}
+              />
+            </label>
+
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                minHeight: 39,
+                padding: "0 18px",
+                border: 0,
+                borderRadius: 11,
+                background: loading
+                  ? "rgba(99,102,241,0.22)"
+                  : "linear-gradient(135deg,#6366f1,#8b5cf6)",
+                color: "white",
+                fontWeight: 800,
+                cursor: loading ? "wait" : "pointer",
+              }}
+            >
+              {loading ? "分析中…" : "↗ 予測を更新"}
+            </button>
+
+            <span
+              style={{
+                marginLeft: "auto",
+                padding: "7px 10px",
+                borderRadius: 999,
+                background: "rgba(251,191,36,0.08)",
+                color: "#fbbf24",
+                fontSize: 11,
+              }}
+            >
+              REFERENCE ONLY
+            </span>
+          </form>
+        </section>
+
+        <section
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
+            gap: 12,
+            marginTop: 16,
+          }}
+        >
+          {[
+            {
+              label: "最大 残業着地",
+              value:
+                items.length > 0
+                  ? formatMinutes(
+                      Math.max(...items.map((item) => item.forecast_overtime_minutes))
+                    )
+                  : "—",
+              sub: "確定シフトを含む参考予測",
+              color: "#a78bfa",
+              icon: "◷",
+            },
+            {
+              label: "総支給参考額",
+              value: payrollSummary
+                ? `${Number(
+                    payrollSummary.gross_pay_reference_total
+                  ).toLocaleString()}円`
+                : "—",
+              sub: payrollSummary
+                ? `集計 ${payrollSummary.included_count}名 / 対象外 ${payrollSummary.excluded_count}名`
+                : "基準日時点",
+              color: "#60a5fa",
+              icon: "¥",
+            },
+            {
+              label: "優先確認",
+              value: `${payrollRisks.length + attendanceReviews.length}件`,
+              sub: `給与 ${payrollRisks.length} / 勤怠 ${attendanceReviews.length}`,
+              color: "#fb7185",
+              icon: "!",
+            },
+            {
+              label: `${yearMonth.slice(0, 4)}年 有給取得`,
+              value:
+                leaveTrends.length > 0
+                  ? `${leaveTrends
+                      .reduce(
+                        (total, item) => total + Number(item.approved_days),
+                        0
+                      )
+                      .toLocaleString()}日`
+                  : "—",
+              sub: "承認済み取得実績",
+              color: "#34d399",
+              icon: "◇",
+            },
+          ].map((card) => (
+            <div
+              key={card.label}
+              style={{
+                padding: 18,
+                borderRadius: 17,
+                border: "1px solid rgba(148,180,216,0.13)",
+                background:
+                  "linear-gradient(145deg, rgba(20,35,56,0.86), rgba(10,22,40,0.72))",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.035)",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  color: "#8fa6bf",
+                  fontSize: 12,
+                }}
+              >
+                {card.label}
+                <span style={{ color: card.color, fontSize: 18 }}>
+                  {card.icon}
+                </span>
+              </div>
+              <div
+                style={{
+                  marginTop: 8,
+                  color: card.color,
+                  fontSize: 25,
+                  fontWeight: 900,
+                  letterSpacing: "-0.02em",
+                }}
+              >
+                {card.value}
+              </div>
+              <div
+                style={{
+                  marginTop: 5,
+                  color: "#687d96",
+                  fontSize: 11,
+                }}
+              >
+                {card.sub}
+              </div>
+            </div>
+          ))}
+        </section>
+
+        <p
+          style={{
+            margin: "14px 2px 0",
+            color: "#7f91a8",
+            fontSize: 12,
+          }}
+        >
           予測値は参考情報です。給与計算・給与確定には使用しません。
         </p>
-
-        <form onSubmit={loadPredictions}>
-          <label style={{ marginRight: 12 }}>
-            対象月
-            <input
-              type="month"
-              value={yearMonth}
-              onChange={(e) => setYearMonth(e.target.value)}
-              required
-              style={{ marginLeft: 8 }}
-            />
-          </label>
-
-          <label style={{ marginRight: 12 }}>
-            基準日
-            <input
-              type="date"
-              value={asOf}
-              onChange={(e) => setAsOf(e.target.value)}
-              required
-              style={{ marginLeft: 8 }}
-            />
-          </label>
-
-          <button type="submit" disabled={loading}>
-            {loading ? "予測中…" : "残業予測を表示"}
-          </button>
-        </form>
 
         {error && <p style={{ color: "#ff9d9d" }}>{error}</p>}
 
