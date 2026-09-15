@@ -161,7 +161,7 @@ export default function AppShell({ children }: Props) {
           <div className="ai-orb">✦</div>
           <strong>AIアシスタント</strong>
           <p>給与・勤怠をAIと一緒に管理。</p>
-          <span>近日公開</span>
+          <span>LOCAL AI · QWEN3</span>
         </div>
 
         <div className="sidebar-footer">
