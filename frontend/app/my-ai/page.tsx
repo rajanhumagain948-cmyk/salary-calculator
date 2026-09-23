@@ -116,13 +116,21 @@ export default function MyAiPage() {
             color: "#a5b4fc",
             fontSize: 12,
             fontWeight: 800,
-            letterSpacing: "0.12em",
+            letterSpacing: "0.16em",
           }}
         >
           MY LOCAL AI
         </div>
 
-        <h1>自分専用AIアシスタント</h1>
+        <h1
+          style={{
+            margin: "5px 0 7px",
+            fontSize: "clamp(26px, 4vw, 38px)",
+            letterSpacing: "-0.03em",
+          }}
+        >
+          自分専用AIアシスタント
+        </h1>
 
         <p style={{ color: "#9fb1c7", lineHeight: 1.7 }}>
           自分の勤怠・確定済み給与・有給について確認できます。
