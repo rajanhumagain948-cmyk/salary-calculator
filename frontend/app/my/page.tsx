@@ -9,16 +9,19 @@ export default function MyPage() {
         <div
           style={{
             color: "#45e0a8",
-            fontSize: 12,
+            fontSize: 11,
             fontWeight: 800,
+            letterSpacing: ".12em",
           }}
         >
           従業員側
         </div>
 
-        <h1>マイページ</h1>
+        <h1 style={{ margin: "7px 0 5px", fontSize: 30 }}>
+          マイページ
+        </h1>
 
-        <p style={{ color: "#8fa6bf" }}>
+        <p style={{ margin: 0, color: "#8298ae", fontSize: 12 }}>
           自分の勤怠・シフト・給与明細・有給をここから確認できます。
         </p>
       </main>
