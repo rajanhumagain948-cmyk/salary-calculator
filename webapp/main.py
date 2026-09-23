@@ -1,4 +1,5 @@
 import json
+import os
 import unicodedata
 import tempfile
 import calendar
@@ -84,7 +85,13 @@ templates = Jinja2Templates(directory="webapp/templates")
 
 repo = PayrollRepository(Path("data/payroll.sqlite3"))
 ai_assistant = OllamaAssistant.from_env()
-serializer = URLSafeSerializer("dev-secret-change-me", salt="session")
+
+
+def session_secret_from_env() -> str:
+    return os.getenv("SESSION_SECRET", "dev-secret-change-me")
+
+
+serializer = URLSafeSerializer(session_secret_from_env(), salt="session")
 
 COOKIE_NAME = "salary_session"
 
