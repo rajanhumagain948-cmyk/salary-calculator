@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import AuthGuard from "@/components/auth/AuthGuard";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
@@ -163,7 +164,8 @@ export default function EmployeeShiftsPage() {
   }, [shifts]);
 
   return (
-    <main
+    <AuthGuard allow={["employee"]}>
+      <main
       style={{
         maxWidth: 1180,
         margin: "0 auto",
@@ -512,7 +514,8 @@ export default function EmployeeShiftsPage() {
           </div>
         )}
       </section>
-    </main>
+      </main>
+    </AuthGuard>
   );
 }
 
