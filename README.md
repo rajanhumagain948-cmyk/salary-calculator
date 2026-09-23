@@ -5,9 +5,7 @@ Pythonで開発した、従業員の勤怠・手当・控除などを管理し�
 ## 🚀 実行方法
 
 ```bash
-cd salary_calculator
-python3 -m pip install -r requirements.txt
-python3 main.py
+.venv/bin/python -m uvicorn webapp.main:app --reload --port 8000
 ```
 
 ## ✨ 主な機能
