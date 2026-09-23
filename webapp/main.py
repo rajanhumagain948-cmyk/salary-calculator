@@ -88,7 +88,7 @@ ai_assistant = OllamaAssistant.from_env()
 
 
 def session_secret_from_env() -> str:
-    return os.getenv("SESSION_SECRET", "dev-secret-change-me")
+    return os.getenv("SESSION_SECRET") or "dev-secret-change-me"
 
 
 serializer = URLSafeSerializer(session_secret_from_env(), salt="session")
