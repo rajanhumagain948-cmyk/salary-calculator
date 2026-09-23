@@ -3,3 +3,4 @@ reportlab>=4.2,<5
 tkcalendar>=1.6,<2
 
 fastapi>=0.141,<0.142
+uvicorn>=0.52,<0.53
