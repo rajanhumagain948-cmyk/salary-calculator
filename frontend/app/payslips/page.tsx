@@ -179,16 +179,18 @@ export default function PayslipsPage() {
             <div
               style={{
                 color: "#45e0a8",
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight: 800,
               }}
             >
               給与
             </div>
 
-            <h1 style={{ margin: "7px 0 5px" }}>給与明細</h1>
+            <h1 style={{ margin: "7px 0 5px", fontSize: 30 }}>
+              給与明細
+            </h1>
 
-            <p style={{ margin: 0, color: "#8fa6bf" }}>
+            <p style={{ margin: 0, color: "#8298ae", fontSize: 12 }}>
               確定済みの給与明細を確認できます。
             </p>
           </div>
