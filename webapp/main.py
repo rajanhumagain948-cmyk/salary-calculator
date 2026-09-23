@@ -126,7 +126,12 @@ def get_current_user(request: Request):
         data = serializer.loads(token)
     except BadSignature:
         return None
-    return repo.user(data.get("username", ""))
+
+    user = repo.user(data.get("username", ""))
+    if not user or not user.active:
+        return None
+
+    return user
 
 def require_user(request: Request):
     user = get_current_user(request)
