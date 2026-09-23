@@ -91,6 +91,10 @@ def session_secret_from_env() -> str:
     return os.getenv("SESSION_SECRET") or "dev-secret-change-me"
 
 
+def session_cookie_secure_from_env() -> bool:
+    return os.getenv("SESSION_COOKIE_SECURE", "").lower() == "true"
+
+
 serializer = URLSafeSerializer(session_secret_from_env(), salt="session")
 
 COOKIE_NAME = "salary_session"
@@ -110,6 +114,7 @@ def set_session_cookie(resp: Response, username: str) -> None:
         token,
         httponly=True,
         samesite="lax",
+        secure=session_cookie_secure_from_env(),
     )
 
 
