@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import AuthGuard from "@/components/auth/AuthGuard";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
@@ -283,7 +282,6 @@ export default function EmployeesPage() {
   }, []);
 
   return (
-    <AuthGuard allow={["admin"]}>
     <main
       style={{
         maxWidth: 1200,
@@ -1078,6 +1076,5 @@ export default function EmployeesPage() {
         </section>
       </div>
     </main>
-    </AuthGuard>
   );
 }
