@@ -44,3 +44,13 @@ def test_inactive_user_existing_session_is_rejected(tmp_path, monkeypatch):
     response = client.get("/me")
 
     assert response.status_code == 401
+
+
+def test_cors_origins_can_include_configured_frontend(monkeypatch):
+    monkeypatch.setenv("FRONTEND_ORIGIN", "https://salary.example.com")
+
+    assert main.cors_origins_from_env() == [
+        "http://127.0.0.1:3000",
+        "http://localhost:3000",
+        "https://salary.example.com",
+    ]

@@ -70,13 +70,21 @@ async def lifespan(app: FastAPI):
     yield
 
 
+def cors_origins_from_env() -> list[str]:
+    origins = [
+        "http://127.0.0.1:3000",
+        "http://localhost:3000",
+    ]
+    frontend_origin = os.getenv("FRONTEND_ORIGIN")
+    if frontend_origin:
+        origins.append(frontend_origin)
+    return origins
+
+
 app = FastAPI(title="Salary Calculator Web", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://127.0.0.1:3000",
-        "http://localhost:3000",
-    ],
+    allow_origins=cors_origins_from_env(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
