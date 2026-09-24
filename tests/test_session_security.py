@@ -75,3 +75,10 @@ def test_logout_deletes_cookie_with_configured_security_attributes(monkeypatch):
     assert "salary_session=" in cookie
     assert "secure" in cookie
     assert "samesite=none" in cookie
+
+
+def test_payroll_db_path_can_be_configured_from_environment(tmp_path, monkeypatch):
+    db_path = tmp_path / "persistent" / "payroll.sqlite3"
+    monkeypatch.setenv("PAYROLL_DB_PATH", str(db_path))
+
+    assert main.payroll_db_path_from_env() == db_path

@@ -91,7 +91,11 @@ app.add_middleware(
 )
 templates = Jinja2Templates(directory="webapp/templates")
 
-repo = PayrollRepository(Path("data/payroll.sqlite3"))
+def payroll_db_path_from_env() -> Path:
+    return Path(os.getenv("PAYROLL_DB_PATH", "data/payroll.sqlite3"))
+
+
+repo = PayrollRepository(payroll_db_path_from_env())
 ai_assistant = OllamaAssistant.from_env()
 
 
