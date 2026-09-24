@@ -60,3 +60,18 @@ def test_session_cookie_samesite_can_be_configured_for_cross_site(monkeypatch):
     monkeypatch.setenv("SESSION_COOKIE_SAMESITE", "none")
 
     assert main.session_cookie_samesite_from_env() == "none"
+
+
+def test_logout_deletes_cookie_with_configured_security_attributes(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    monkeypatch.setenv("SESSION_COOKIE_SECURE", "true")
+    monkeypatch.setenv("SESSION_COOKIE_SAMESITE", "none")
+
+    client = TestClient(main.app)
+    response = client.post("/logout")
+
+    cookie = response.headers["set-cookie"].lower()
+    assert "salary_session=" in cookie
+    assert "secure" in cookie
+    assert "samesite=none" in cookie

@@ -208,7 +208,11 @@ def login(username: str = Form(...), password: str = Form(...)):
 @app.post("/logout")
 def logout():
     resp = JSONResponse({"ok": True})
-    resp.delete_cookie(COOKIE_NAME)
+    resp.delete_cookie(
+        COOKIE_NAME,
+        secure=session_cookie_secure_from_env(),
+        samesite=session_cookie_samesite_from_env(),
+    )
     return resp
 
 
