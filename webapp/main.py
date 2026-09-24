@@ -103,6 +103,10 @@ def session_cookie_secure_from_env() -> bool:
     return os.getenv("SESSION_COOKIE_SECURE", "").lower() == "true"
 
 
+def session_cookie_samesite_from_env() -> str:
+    return os.getenv("SESSION_COOKIE_SAMESITE", "lax").lower()
+
+
 serializer = URLSafeSerializer(session_secret_from_env(), salt="session")
 
 COOKIE_NAME = "salary_session"
@@ -121,7 +125,7 @@ def set_session_cookie(resp: Response, username: str) -> None:
         COOKIE_NAME,
         token,
         httponly=True,
-        samesite="lax",
+        samesite=session_cookie_samesite_from_env(),
         secure=session_cookie_secure_from_env(),
     )
 

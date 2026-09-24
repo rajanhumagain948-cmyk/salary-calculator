@@ -54,3 +54,9 @@ def test_cors_origins_can_include_configured_frontend(monkeypatch):
         "http://localhost:3000",
         "https://salary.example.com",
     ]
+
+
+def test_session_cookie_samesite_can_be_configured_for_cross_site(monkeypatch):
+    monkeypatch.setenv("SESSION_COOKIE_SAMESITE", "none")
+
+    assert main.session_cookie_samesite_from_env() == "none"
