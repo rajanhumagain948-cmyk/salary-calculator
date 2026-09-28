@@ -40,3 +40,26 @@ class PostgresPayrollRepository:
             ),
         )
         self.connection.commit()
+
+    def user(self, username: str):
+        from models.user import User
+
+        row = self.connection.execute(
+            """
+            SELECT username, password_hash, role, employee_id, active
+            FROM users
+            WHERE username = %s
+            """,
+            (username,),
+        ).fetchone()
+
+        if not row:
+            return None
+
+        return User(
+            username=row[0],
+            password_hash=row[1],
+            role=row[2],
+            employee_id=row[3],
+            active=bool(row[4]),
+        )
