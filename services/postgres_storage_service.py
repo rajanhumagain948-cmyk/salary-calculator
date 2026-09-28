@@ -18,3 +18,25 @@ class PostgresPayrollRepository:
             """
         )
         self.connection.commit()
+
+    def save_user(self, user) -> None:
+        self.connection.execute(
+            """
+            INSERT INTO users
+                (username, password_hash, role, employee_id, active)
+            VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT (username) DO UPDATE SET
+                password_hash = EXCLUDED.password_hash,
+                role = EXCLUDED.role,
+                employee_id = EXCLUDED.employee_id,
+                active = EXCLUDED.active
+            """,
+            (
+                user.username,
+                user.password_hash,
+                user.role,
+                user.employee_id,
+                user.active,
+            ),
+        )
+        self.connection.commit()
