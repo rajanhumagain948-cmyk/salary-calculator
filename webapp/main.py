@@ -13,7 +13,7 @@ from itsdangerous import URLSafeSerializer, BadSignature
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
 from services.storage_service import PayrollRepository
-from services.auth_service import verify_password
+from services.auth_service import hash_password, verify_password
 from pathlib import Path
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import date, datetime
@@ -25,6 +25,7 @@ from models.leave_request import LeaveRequest
 from models.leave_grant import LeaveGrant
 from models.shifts import Shift
 from models.work_record import WorkRecord
+from models.user import User
 from models.allowance import Allowance
 from models.deduction import OtherDeduction
 from models.transportation import Transportation
@@ -64,8 +65,25 @@ from services.ai_context_service import (
     find_referenced_employee_from_history,
 )
 
+def bootstrap_admin_from_env(repository: PayrollRepository) -> None:
+    username = os.getenv("BOOTSTRAP_ADMIN_USERNAME", "").strip()
+    password = os.getenv("BOOTSTRAP_ADMIN_PASSWORD", "")
+    if not username or not password or repository.user(username):
+        return
+
+    repository.save_user(
+        User(
+            username=username,
+            password_hash=hash_password(password),
+            role="admin",
+            active=True,
+        )
+    )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    bootstrap_admin_from_env(repo)
     run_payroll_auto_check(repo)
     yield
 

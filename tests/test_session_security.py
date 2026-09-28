@@ -82,3 +82,20 @@ def test_payroll_db_path_can_be_configured_from_environment(tmp_path, monkeypatc
     monkeypatch.setenv("PAYROLL_DB_PATH", str(db_path))
 
     assert main.payroll_db_path_from_env() == db_path
+
+
+def test_bootstrap_admin_creates_missing_user_from_environment(tmp_path, monkeypatch):
+    from services.auth_service import verify_password
+    from services.storage_service import PayrollRepository
+
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setenv("BOOTSTRAP_ADMIN_USERNAME", "demo-admin")
+    monkeypatch.setenv("BOOTSTRAP_ADMIN_PASSWORD", "demo-password")
+
+    main.bootstrap_admin_from_env(test_repo)
+
+    user = test_repo.user("demo-admin")
+    assert user is not None
+    assert user.role == "admin"
+    assert user.active is True
+    assert verify_password("demo-password", user.password_hash)
