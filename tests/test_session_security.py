@@ -186,3 +186,44 @@ def test_current_user_uses_auth_repository(monkeypatch):
 
     assert response.status_code == 200
     assert response.json()["username"] == "postgres-admin"
+
+
+def test_login_uses_auth_repository_when_database_url_is_configured(monkeypatch):
+    from fastapi.testclient import TestClient
+    from models.user import User
+    from services.auth_service import hash_password
+
+    monkeypatch.setenv(
+        "DATABASE_URL",
+        "postgresql://user:password@db.example.com/payroll",
+    )
+
+    class AuthRepository:
+        def user(self, username):
+            if username == "postgres-admin":
+                return User(
+                    username="postgres-admin",
+                    password_hash=hash_password("secret-password"),
+                    role="admin",
+                    active=True,
+                )
+            return None
+
+    class BusinessRepository:
+        def user(self, username):
+            raise AssertionError("business repository must not handle login")
+
+    monkeypatch.setattr(main, "auth_repo", AuthRepository())
+    monkeypatch.setattr(main, "repo", BusinessRepository())
+
+    client = TestClient(main.app)
+    response = client.post(
+        "/login",
+        data={
+            "username": "postgres-admin",
+            "password": "secret-password",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["role"] == "admin"

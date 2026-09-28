@@ -235,7 +235,8 @@ def app_home(request: Request):
 
 @app.post("/login")
 def login(username: str = Form(...), password: str = Form(...)):
-    user = repo.user(username.strip())
+    authentication_repository = auth_repo if database_url_from_env() else repo
+    user = authentication_repository.user(username.strip())
     if not user or not user.active or not verify_password(password, user.password_hash):
         raise HTTPException(status_code=401, detail="invalid credentials")
 
