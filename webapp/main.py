@@ -109,6 +109,10 @@ app.add_middleware(
 )
 templates = Jinja2Templates(directory="webapp/templates")
 
+def database_url_from_env() -> str | None:
+    return os.getenv("DATABASE_URL") or None
+
+
 def payroll_db_path_from_env() -> Path:
     return Path(os.getenv("PAYROLL_DB_PATH", "data/payroll.sqlite3"))
 

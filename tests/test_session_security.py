@@ -99,3 +99,14 @@ def test_bootstrap_admin_creates_missing_user_from_environment(tmp_path, monkeyp
     assert user.role == "admin"
     assert user.active is True
     assert verify_password("demo-password", user.password_hash)
+
+
+def test_database_url_from_env_prefers_postgresql_url(monkeypatch):
+    monkeypatch.setenv(
+        "DATABASE_URL",
+        "postgresql://user:password@db.example.com:5432/payroll",
+    )
+
+    assert main.database_url_from_env() == (
+        "postgresql://user:password@db.example.com:5432/payroll"
+    )
