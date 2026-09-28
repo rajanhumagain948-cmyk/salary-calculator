@@ -13,6 +13,7 @@ from itsdangerous import URLSafeSerializer, BadSignature
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
 from services.storage_service import PayrollRepository
+from services.postgres_storage_service import PostgresPayrollRepository
 from services.auth_service import hash_password, verify_password
 from pathlib import Path
 from fastapi.middleware.cors import CORSMiddleware
@@ -125,6 +126,12 @@ def payroll_db_path_from_env() -> Path:
 
 
 repo = PayrollRepository(payroll_db_path_from_env())
+
+auth_repo = auth_repository_from_env(
+    sqlite_repository=repo,
+    postgres_factory=PostgresPayrollRepository.from_database_url,
+)
+
 ai_assistant = OllamaAssistant.from_env()
 
 
@@ -172,7 +179,8 @@ def get_current_user(request: Request):
     except BadSignature:
         return None
 
-    user = repo.user(data.get("username", ""))
+    authentication_repository = auth_repo if database_url_from_env() else repo
+    user = authentication_repository.user(data.get("username", ""))
     if not user or not user.active:
         return None
 

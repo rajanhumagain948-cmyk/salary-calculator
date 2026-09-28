@@ -149,3 +149,40 @@ def test_auth_repository_keeps_sqlite_without_database_url(monkeypatch):
     )
 
     assert result is sqlite_repository
+
+
+def test_current_user_uses_auth_repository(monkeypatch):
+    from fastapi.testclient import TestClient
+    from models.user import User
+
+    monkeypatch.setenv(
+        "DATABASE_URL",
+        "postgresql://user:password@db.example.com/payroll",
+    )
+
+    class AuthRepository:
+        def user(self, username):
+            if username == "postgres-admin":
+                return User(
+                    username="postgres-admin",
+                    password_hash="unused",
+                    role="admin",
+                    active=True,
+                )
+            return None
+
+    class BusinessRepository:
+        def user(self, username):
+            raise AssertionError("business repository must not handle authentication")
+
+    monkeypatch.setattr(main, "auth_repo", AuthRepository(), raising=False)
+    monkeypatch.setattr(main, "repo", BusinessRepository())
+
+    client = TestClient(main.app)
+    token = main.serializer.dumps({"username": "postgres-admin"})
+    client.cookies.set(main.COOKIE_NAME, token)
+
+    response = client.get("/me")
+
+    assert response.status_code == 200
+    assert response.json()["username"] == "postgres-admin"
