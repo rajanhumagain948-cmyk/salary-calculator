@@ -78,3 +78,29 @@ def test_postgres_repository_loads_user():
     assert user.employee_id is None
     assert user.active is True
     assert executed[-1][1] == ("admin",)
+
+
+def test_postgres_repository_can_connect_from_database_url():
+    captured = {}
+
+    class FakeConnection:
+        def execute(self, sql, params=None):
+            return self
+
+        def commit(self):
+            pass
+
+    connection = FakeConnection()
+
+    def fake_connect(database_url):
+        captured["database_url"] = database_url
+        return connection
+
+    PostgresPayrollRepository.from_database_url(
+        "postgresql://user:password@db.example.com/payroll",
+        connect=fake_connect,
+    )
+
+    assert captured["database_url"] == (
+        "postgresql://user:password@db.example.com/payroll"
+    )

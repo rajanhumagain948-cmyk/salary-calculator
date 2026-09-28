@@ -4,6 +4,15 @@ from typing import Any
 
 
 class PostgresPayrollRepository:
+    @classmethod
+    def from_database_url(cls, database_url: str, connect=None):
+        if connect is None:
+            import psycopg
+
+            connect = psycopg.connect
+
+        return cls(connect(database_url))
+
     def __init__(self, connection: Any) -> None:
         self.connection = connection
         self.connection.execute(
