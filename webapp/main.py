@@ -113,6 +113,13 @@ def database_url_from_env() -> str | None:
     return os.getenv("DATABASE_URL") or None
 
 
+def auth_repository_from_env(sqlite_repository, postgres_factory):
+    database_url = database_url_from_env()
+    if database_url:
+        return postgres_factory(database_url)
+    return sqlite_repository
+
+
 def payroll_db_path_from_env() -> Path:
     return Path(os.getenv("PAYROLL_DB_PATH", "data/payroll.sqlite3"))
 

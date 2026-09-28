@@ -110,3 +110,27 @@ def test_database_url_from_env_prefers_postgresql_url(monkeypatch):
     assert main.database_url_from_env() == (
         "postgresql://user:password@db.example.com:5432/payroll"
     )
+
+
+def test_auth_repository_uses_postgres_when_database_url_is_configured(monkeypatch):
+    sentinel = object()
+    captured = {}
+
+    monkeypatch.setenv(
+        "DATABASE_URL",
+        "postgresql://user:password@db.example.com/payroll",
+    )
+
+    def fake_factory(database_url):
+        captured["database_url"] = database_url
+        return sentinel
+
+    result = main.auth_repository_from_env(
+        sqlite_repository=object(),
+        postgres_factory=fake_factory,
+    )
+
+    assert result is sentinel
+    assert captured["database_url"] == (
+        "postgresql://user:password@db.example.com/payroll"
+    )
