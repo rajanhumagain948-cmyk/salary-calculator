@@ -134,3 +134,18 @@ def test_auth_repository_uses_postgres_when_database_url_is_configured(monkeypat
     assert captured["database_url"] == (
         "postgresql://user:password@db.example.com/payroll"
     )
+
+
+def test_auth_repository_keeps_sqlite_without_database_url(monkeypatch):
+    sqlite_repository = object()
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+
+    def unexpected_factory(database_url):
+        raise AssertionError("PostgreSQL factory must not be called")
+
+    result = main.auth_repository_from_env(
+        sqlite_repository=sqlite_repository,
+        postgres_factory=unexpected_factory,
+    )
+
+    assert result is sqlite_repository
