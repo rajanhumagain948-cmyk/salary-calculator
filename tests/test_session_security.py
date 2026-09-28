@@ -227,3 +227,26 @@ def test_login_uses_auth_repository_when_database_url_is_configured(monkeypatch)
 
     assert response.status_code == 200
     assert response.json()["role"] == "admin"
+
+
+def test_lifespan_bootstraps_admin_into_auth_repository(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    captured = {}
+
+    def fake_bootstrap(repository):
+        captured["repository"] = repository
+
+    class AuthRepository:
+        pass
+
+    auth_repository = AuthRepository()
+
+    monkeypatch.setattr(main, "auth_repo", auth_repository)
+    monkeypatch.setattr(main, "bootstrap_admin_from_env", fake_bootstrap)
+    monkeypatch.setattr(main, "run_payroll_auto_check", lambda repository: None)
+
+    with TestClient(main.app):
+        pass
+
+    assert captured["repository"] is auth_repository

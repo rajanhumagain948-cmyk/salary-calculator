@@ -84,7 +84,7 @@ def bootstrap_admin_from_env(repository: PayrollRepository) -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    bootstrap_admin_from_env(repo)
+    bootstrap_admin_from_env(auth_repo)
     run_payroll_auto_check(repo)
     yield
 
