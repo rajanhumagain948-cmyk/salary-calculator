@@ -77,3 +77,45 @@ def test_get_company_uses_postgres_repository_when_database_url_is_configured(
 
     assert response.status_code == 200
     assert response.json()["name"] == "PostgreSQL株式会社"
+
+
+def test_put_company_uses_postgres_repository_when_database_url_is_configured(
+    monkeypatch,
+):
+    from models.company import Company
+
+    class Admin:
+        role = "admin"
+
+    class PostgresCompanyRepository:
+        def __init__(self):
+            self.saved_company = None
+
+        def company(self):
+            return Company()
+
+        def save_company(self, company):
+            self.saved_company = company
+
+    postgres_repo = PostgresCompanyRepository()
+
+    monkeypatch.setenv(
+        "DATABASE_URL",
+        "postgresql://user:password@db.example.com/payroll",
+    )
+    monkeypatch.setattr(main, "auth_repo", postgres_repo)
+    monkeypatch.setattr(main, "require_user", lambda request: Admin())
+
+    client = TestClient(main.app)
+    response = client.put(
+        "/company",
+        data={
+            "name": "PostgreSQL株式会社",
+            "address": "Tokyo",
+            "representative": "Taro",
+        },
+    )
+
+    assert response.status_code == 200
+    assert postgres_repo.saved_company is not None
+    assert postgres_repo.saved_company.name == "PostgreSQL株式会社"

@@ -1330,7 +1330,11 @@ def update_company(
     if not name:
         raise HTTPException(status_code=400, detail="company name is required")
 
-    current_company = repo.company()
+    company_repo = company_repository_from_env(
+        sqlite_repository=repo,
+        postgres_repository=auth_repo,
+    )
+    current_company = company_repo.company()
 
     if hourly_paid_leave_enabled is None:
         hourly_enabled = current_company.hourly_paid_leave_enabled
@@ -1405,7 +1409,7 @@ def update_company(
         hourly_paid_leave_year_start_month=year_start_month,
         hourly_paid_leave_year_start_day=year_start_day,
     )
-    repo.save_company(company)
+    company_repo.save_company(company)
 
     return {
         "ok": True,
