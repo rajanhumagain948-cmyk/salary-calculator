@@ -99,3 +99,21 @@ class PostgresPayrollRepository:
         import json
 
         return Company(**json.loads(row[0]))
+
+    def save_company(self, company) -> None:
+        import json
+        from dataclasses import asdict
+
+        self.connection.execute(
+            """
+            INSERT INTO settings (key, payload)
+            VALUES (%s, %s)
+            ON CONFLICT (key) DO UPDATE SET
+                payload = EXCLUDED.payload
+            """,
+            (
+                "company",
+                json.dumps(asdict(company), ensure_ascii=False),
+            ),
+        )
+        self.connection.commit()

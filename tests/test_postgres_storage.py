@@ -183,3 +183,36 @@ def test_postgres_repository_loads_saved_company():
     assert company.hourly_paid_leave_unit_hours == 2
     assert company.hourly_paid_leave_year_start_month == 1
     assert company.hourly_paid_leave_year_start_day == 10
+
+
+def test_postgres_repository_saves_company_with_upsert():
+    from models.company import Company
+
+    executed = []
+
+    class FakeConnection:
+        def execute(self, sql, params=None):
+            executed.append((sql, params))
+            return self
+
+        def commit(self):
+            pass
+
+    repo = PostgresPayrollRepository(connection=FakeConnection())
+    executed.clear()
+
+    repo.save_company(
+        Company(
+            name="Example",
+            address="Tokyo",
+            representative="Taro",
+        )
+    )
+
+    sql, params = executed[0]
+    assert "INSERT INTO settings" in sql
+    assert "ON CONFLICT (key) DO UPDATE" in sql
+    assert params[0] == "company"
+    assert '"name": "Example"' in params[1]
+    assert '"address": "Tokyo"' in params[1]
+    assert '"representative": "Taro"' in params[1]
