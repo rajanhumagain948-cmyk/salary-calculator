@@ -307,3 +307,17 @@ def test_company_repository_uses_postgres_when_database_url_is_configured(monkey
     )
 
     assert result is postgres_repository
+
+
+def test_company_repository_keeps_sqlite_without_database_url(monkeypatch):
+    sqlite_repository = object()
+    postgres_repository = object()
+
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+
+    result = main.company_repository_from_env(
+        sqlite_repository=sqlite_repository,
+        postgres_repository=postgres_repository,
+    )
+
+    assert result is sqlite_repository
