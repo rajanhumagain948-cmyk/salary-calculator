@@ -123,3 +123,30 @@ def test_postgres_repository_initializes_settings_table():
         "CREATE TABLE IF NOT EXISTS settings" in sql
         for sql, _ in executed
     )
+
+
+def test_postgres_repository_returns_default_company_when_not_saved():
+    class FakeResult:
+        def fetchone(self):
+            return None
+
+    class FakeConnection:
+        def execute(self, sql, params=None):
+            if "SELECT payload" in sql:
+                return FakeResult()
+            return self
+
+        def commit(self):
+            pass
+
+    repo = PostgresPayrollRepository(connection=FakeConnection())
+
+    company = repo.company()
+
+    assert company.name == ""
+    assert company.address == ""
+    assert company.representative == ""
+    assert company.hourly_paid_leave_enabled is False
+    assert company.hourly_paid_leave_unit_hours == 1
+    assert company.hourly_paid_leave_year_start_month == 4
+    assert company.hourly_paid_leave_year_start_day == 1

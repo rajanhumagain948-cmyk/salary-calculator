@@ -80,3 +80,22 @@ class PostgresPayrollRepository:
             employee_id=row[3],
             active=bool(row[4]),
         )
+
+    def company(self):
+        from models.company import Company
+
+        row = self.connection.execute(
+            """
+            SELECT payload
+            FROM settings
+            WHERE key = %s
+            """,
+            ("company",),
+        ).fetchone()
+
+        if not row:
+            return Company()
+
+        import json
+
+        return Company(**json.loads(row[0]))
