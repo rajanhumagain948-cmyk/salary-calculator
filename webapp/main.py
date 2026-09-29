@@ -2667,7 +2667,7 @@ def submit_my_leave_request(
     if leave_unit not in ("全日", "半日", "時間"):
         raise HTTPException(status_code=400, detail="不正な取得単位です。")
 
-    company = repo.company()
+    company = company_repository().company()
     terms = repo.terms(employee_id)
 
     start_minute = None

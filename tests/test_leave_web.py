@@ -1071,3 +1071,99 @@ def test_admin_can_approve_hourly_leave_within_annual_limit(
         if item.request_id == hourly_request.request_id
     )
     assert saved.status == "承認"
+
+
+def test_hourly_leave_request_uses_postgres_company_setting(
+    tmp_path,
+    monkeypatch,
+):
+    from models.company import Company
+
+    test_repo = _hourly_leave_repo(
+        tmp_path,
+        monkeypatch,
+        enabled=False,
+    )
+
+    class EmployeeUser:
+        role = "employee"
+        employee_id = "E1"
+
+    class PostgresCompanyRepository:
+        def company(self):
+            return Company(
+                name="PostgreSQL株式会社",
+                hourly_paid_leave_enabled=True,
+                hourly_paid_leave_unit_hours=1,
+                hourly_paid_leave_year_start_month=4,
+                hourly_paid_leave_year_start_day=1,
+            )
+
+    monkeypatch.setenv(
+        "DATABASE_URL",
+        "postgresql://user:password@db.example.com/payroll",
+    )
+    monkeypatch.setattr(main, "auth_repo", PostgresCompanyRepository())
+    monkeypatch.setattr(main, "require_user", lambda request: EmployeeUser())
+
+    client = TestClient(main.app)
+    response = client.post(
+        "/my/leave-requests",
+        data={
+            "leave_date": "2026-09-15",
+            "leave_unit": "時間",
+            "start_time": "09:00",
+            "end_time": "11:00",
+        },
+    )
+
+    assert response.status_code == 200
+    assert len(test_repo.leave_requests("E1")) == 1
+
+
+def test_hourly_leave_request_uses_postgres_company_setting(
+    tmp_path,
+    monkeypatch,
+):
+    from models.company import Company
+
+    test_repo = _hourly_leave_repo(
+        tmp_path,
+        monkeypatch,
+        enabled=False,
+    )
+
+    class EmployeeUser:
+        role = "employee"
+        employee_id = "E1"
+
+    class PostgresCompanyRepository:
+        def company(self):
+            return Company(
+                name="PostgreSQL株式会社",
+                hourly_paid_leave_enabled=True,
+                hourly_paid_leave_unit_hours=1,
+                hourly_paid_leave_year_start_month=4,
+                hourly_paid_leave_year_start_day=1,
+            )
+
+    monkeypatch.setenv(
+        "DATABASE_URL",
+        "postgresql://user:password@db.example.com/payroll",
+    )
+    monkeypatch.setattr(main, "auth_repo", PostgresCompanyRepository())
+    monkeypatch.setattr(main, "require_user", lambda request: EmployeeUser())
+
+    client = TestClient(main.app)
+    response = client.post(
+        "/my/leave-requests",
+        data={
+            "leave_date": "2026-09-15",
+            "leave_unit": "時間",
+            "start_time": "09:00",
+            "end_time": "11:00",
+        },
+    )
+
+    assert response.status_code == 200
+    assert len(test_repo.leave_requests("E1")) == 1
