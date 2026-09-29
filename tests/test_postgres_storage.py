@@ -150,3 +150,36 @@ def test_postgres_repository_returns_default_company_when_not_saved():
     assert company.hourly_paid_leave_unit_hours == 1
     assert company.hourly_paid_leave_year_start_month == 4
     assert company.hourly_paid_leave_year_start_day == 1
+
+
+def test_postgres_repository_loads_saved_company():
+    class FakeResult:
+        def fetchone(self):
+            return (
+                '{"name":"Example","address":"Tokyo","representative":"Taro",'
+                '"hourly_paid_leave_enabled":true,'
+                '"hourly_paid_leave_unit_hours":2,'
+                '"hourly_paid_leave_year_start_month":1,'
+                '"hourly_paid_leave_year_start_day":10}',
+            )
+
+    class FakeConnection:
+        def execute(self, sql, params=None):
+            if "SELECT payload" in sql:
+                return FakeResult()
+            return self
+
+        def commit(self):
+            pass
+
+    repo = PostgresPayrollRepository(connection=FakeConnection())
+
+    company = repo.company()
+
+    assert company.name == "Example"
+    assert company.address == "Tokyo"
+    assert company.representative == "Taro"
+    assert company.hourly_paid_leave_enabled is True
+    assert company.hourly_paid_leave_unit_hours == 2
+    assert company.hourly_paid_leave_year_start_month == 1
+    assert company.hourly_paid_leave_year_start_day == 10
