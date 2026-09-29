@@ -138,6 +138,14 @@ auth_repo = auth_repository_from_env(
     postgres_factory=PostgresPayrollRepository.from_database_url,
 )
 
+
+def company_repository():
+    return company_repository_from_env(
+        sqlite_repository=repo,
+        postgres_repository=auth_repo,
+    )
+
+
 ai_assistant = OllamaAssistant.from_env()
 
 

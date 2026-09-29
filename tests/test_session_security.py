@@ -321,3 +321,17 @@ def test_company_repository_keeps_sqlite_without_database_url(monkeypatch):
     )
 
     assert result is sqlite_repository
+
+
+def test_company_repository_uses_configured_repositories(monkeypatch):
+    sqlite_repository = object()
+    postgres_repository = object()
+
+    monkeypatch.setenv(
+        "DATABASE_URL",
+        "postgresql://user:password@db.example.com/payroll",
+    )
+    monkeypatch.setattr(main, "repo", sqlite_repository)
+    monkeypatch.setattr(main, "auth_repo", postgres_repository)
+
+    assert main.company_repository() is postgres_repository
