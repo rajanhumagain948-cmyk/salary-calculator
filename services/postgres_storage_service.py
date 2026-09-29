@@ -129,6 +129,12 @@ class PostgresPayrollRepository:
         )
         self.connection.commit()
 
+        self.audit(
+            "会社情報保存",
+            "company",
+            company.name,
+        )
+
     def audit(
         self,
         action: str,

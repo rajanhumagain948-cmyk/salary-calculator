@@ -265,3 +265,36 @@ def test_postgres_repository_saves_audit_log():
         "company",
         "Example",
     )
+
+
+def test_postgres_save_company_writes_audit_log():
+    from models.company import Company
+
+    executed = []
+
+    class FakeConnection:
+        def execute(self, sql, params=None):
+            executed.append((sql, params))
+            return self
+
+        def commit(self):
+            pass
+
+    repo = PostgresPayrollRepository(connection=FakeConnection())
+    executed.clear()
+
+    repo.save_company(Company(name="Example"))
+
+    audit_calls = [
+        (sql, params)
+        for sql, params in executed
+        if "INSERT INTO audit_log" in sql
+    ]
+
+    assert len(audit_calls) == 1
+    _, params = audit_calls[0]
+    assert params[1:] == (
+        "会社情報保存",
+        "company",
+        "Example",
+    )
