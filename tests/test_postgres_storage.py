@@ -216,3 +216,22 @@ def test_postgres_repository_saves_company_with_upsert():
     assert '"name": "Example"' in params[1]
     assert '"address": "Tokyo"' in params[1]
     assert '"representative": "Taro"' in params[1]
+
+
+def test_postgres_repository_initializes_audit_log_table():
+    executed = []
+
+    class FakeConnection:
+        def execute(self, sql, params=None):
+            executed.append((sql, params))
+            return self
+
+        def commit(self):
+            pass
+
+    PostgresPayrollRepository(connection=FakeConnection())
+
+    assert any(
+        "CREATE TABLE IF NOT EXISTS audit_log" in sql
+        for sql, _ in executed
+    )

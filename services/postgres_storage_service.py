@@ -34,6 +34,17 @@ class PostgresPayrollRepository:
             )
             """
         )
+        self.connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS audit_log (
+                id BIGSERIAL PRIMARY KEY,
+                created_at TEXT NOT NULL,
+                action TEXT NOT NULL,
+                subject TEXT NOT NULL,
+                detail TEXT NOT NULL
+            )
+            """
+        )
         self.connection.commit()
 
     def save_user(self, user) -> None:
