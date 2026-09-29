@@ -1294,7 +1294,11 @@ def me(request: Request):
 @app.get("/company")
 def company_info(request: Request):
     require_user(request)
-    company = repo.company()
+    company_repo = company_repository_from_env(
+        sqlite_repository=repo,
+        postgres_repository=auth_repo,
+    )
+    company = company_repo.company()
 
     return {
         "name": company.name,

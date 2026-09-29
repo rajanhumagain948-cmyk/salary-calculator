@@ -50,3 +50,30 @@ def test_admin_can_save_hourly_paid_leave_settings(tmp_path, monkeypatch):
     assert get_response.json()["hourly_paid_leave_unit_hours"] == 1
     assert get_response.json()["hourly_paid_leave_year_start_month"] == 7
     assert get_response.json()["hourly_paid_leave_year_start_day"] == 15
+
+
+def test_get_company_uses_postgres_repository_when_database_url_is_configured(
+    monkeypatch,
+):
+    from models.company import Company
+
+    class PostgresCompanyRepository:
+        def company(self):
+            return Company(
+                name="PostgreSQL株式会社",
+                address="Tokyo",
+                representative="Taro",
+            )
+
+    monkeypatch.setenv(
+        "DATABASE_URL",
+        "postgresql://user:password@db.example.com/payroll",
+    )
+    monkeypatch.setattr(main, "auth_repo", PostgresCompanyRepository())
+    monkeypatch.setattr(main, "require_user", lambda request: object())
+
+    client = TestClient(main.app)
+    response = client.get("/company")
+
+    assert response.status_code == 200
+    assert response.json()["name"] == "PostgreSQL株式会社"
