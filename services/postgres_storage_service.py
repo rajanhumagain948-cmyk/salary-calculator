@@ -128,3 +128,30 @@ class PostgresPayrollRepository:
             ),
         )
         self.connection.commit()
+
+    def audit(
+        self,
+        action: str,
+        subject: str,
+        detail: str,
+    ) -> None:
+        from datetime import datetime
+
+        self.connection.execute(
+            """
+            INSERT INTO audit_log(
+                created_at,
+                action,
+                subject,
+                detail
+            )
+            VALUES (%s, %s, %s, %s)
+            """,
+            (
+                datetime.now().isoformat(timespec="seconds"),
+                action,
+                subject,
+                detail,
+            ),
+        )
+        self.connection.commit()

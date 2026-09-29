@@ -235,3 +235,33 @@ def test_postgres_repository_initializes_audit_log_table():
         "CREATE TABLE IF NOT EXISTS audit_log" in sql
         for sql, _ in executed
     )
+
+
+def test_postgres_repository_saves_audit_log():
+    executed = []
+
+    class FakeConnection:
+        def execute(self, sql, params=None):
+            executed.append((sql, params))
+            return self
+
+        def commit(self):
+            pass
+
+    repo = PostgresPayrollRepository(connection=FakeConnection())
+    executed.clear()
+
+    repo.audit(
+        "会社情報保存",
+        "company",
+        "Example",
+    )
+
+    sql, params = executed[0]
+    assert "INSERT INTO audit_log" in sql
+    assert "VALUES (%s, %s, %s, %s)" in sql
+    assert params[1:] == (
+        "会社情報保存",
+        "company",
+        "Example",
+    )
