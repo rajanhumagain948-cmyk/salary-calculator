@@ -290,3 +290,20 @@ def test_login_ui_uses_auth_repository_when_database_url_is_configured(monkeypat
     )
 
     assert response.status_code == 303
+
+
+def test_company_repository_uses_postgres_when_database_url_is_configured(monkeypatch):
+    sqlite_repository = object()
+    postgres_repository = object()
+
+    monkeypatch.setenv(
+        "DATABASE_URL",
+        "postgresql://user:password@db.example.com/payroll",
+    )
+
+    result = main.company_repository_from_env(
+        sqlite_repository=sqlite_repository,
+        postgres_repository=postgres_repository,
+    )
+
+    assert result is postgres_repository

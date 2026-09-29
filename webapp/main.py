@@ -121,6 +121,12 @@ def auth_repository_from_env(sqlite_repository, postgres_factory):
     return sqlite_repository
 
 
+def company_repository_from_env(sqlite_repository, postgres_repository):
+    if database_url_from_env():
+        return postgres_repository
+    return sqlite_repository
+
+
 def payroll_db_path_from_env() -> Path:
     return Path(os.getenv("PAYROLL_DB_PATH", "data/payroll.sqlite3"))
 
