@@ -2845,7 +2845,7 @@ def update_leave_request_status(
             )
 
         if existing.leave_unit == "時間":
-            company = repo.company()
+            company = company_repository().company()
             terms = repo.terms(existing.employee_id)
 
             if (
