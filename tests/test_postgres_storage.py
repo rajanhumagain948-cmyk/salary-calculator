@@ -104,3 +104,22 @@ def test_postgres_repository_can_connect_from_database_url():
     assert captured["database_url"] == (
         "postgresql://user:password@db.example.com/payroll"
     )
+
+
+def test_postgres_repository_initializes_settings_table():
+    executed = []
+
+    class FakeConnection:
+        def execute(self, sql, params=None):
+            executed.append((sql, params))
+            return self
+
+        def commit(self):
+            pass
+
+    PostgresPayrollRepository(connection=FakeConnection())
+
+    assert any(
+        "CREATE TABLE IF NOT EXISTS settings" in sql
+        for sql, _ in executed
+    )
