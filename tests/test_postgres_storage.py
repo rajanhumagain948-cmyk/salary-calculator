@@ -401,3 +401,39 @@ def test_postgres_save_employee_writes_audit_log():
         "E1",
         "Test Employee",
     )
+
+
+def test_postgres_repository_loads_employees():
+    from datetime import date
+    from decimal import Decimal
+
+    class FakeResult:
+        def fetchall(self):
+            return [(
+                '{"employee_id":"E1","name":"Test Employee",'
+                '"employment_type":"正社員","hire_date":"2026-01-01",'
+                '"pay_type":"月給","monthly_salary":"200000",'
+                '"weekly_hours":"40","weekly_days":5}',
+            )]
+
+    class FakeConnection:
+        def execute(self, sql, params=None):
+            if "SELECT payload" in sql and "FROM employees" in sql:
+                return FakeResult()
+            return self
+
+        def commit(self):
+            pass
+
+    repo = PostgresPayrollRepository(connection=FakeConnection())
+
+    employees = repo.employees()
+
+    assert len(employees) == 1
+    employee = employees[0]
+    assert employee.employee_id == "E1"
+    assert employee.name == "Test Employee"
+    assert employee.hire_date == date(2026, 1, 1)
+    assert employee.monthly_salary == Decimal("200000")
+    assert employee.weekly_hours == Decimal("40")
+    assert employee.weekly_days == 5

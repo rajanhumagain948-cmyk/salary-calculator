@@ -197,3 +197,53 @@ class PostgresPayrollRepository:
             employee.employee_id,
             employee.name,
         )
+
+    def employees(self):
+        import json
+        from datetime import date
+        from decimal import Decimal
+
+        from models.employee import Employee
+
+        rows = self.connection.execute(
+            """
+            SELECT payload
+            FROM employees
+            ORDER BY employee_id
+            """
+        ).fetchall()
+
+        result = []
+
+        for (payload,) in rows:
+            data = json.loads(payload)
+
+            for key in (
+                "hourly_rate",
+                "monthly_salary",
+                "weekly_hours",
+                "resident_tax_monthly",
+                "standard_monthly_remuneration",
+            ):
+                data[key] = Decimal(data.get(key, "0"))
+
+            for key in (
+                "weekly_days",
+                "workplace_size",
+                "dependents",
+                "contract_months",
+            ):
+                if data.get(key) not in (None, ""):
+                    data[key] = int(data[key])
+
+            for key in (
+                "hire_date",
+                "termination_date",
+                "birth_date",
+            ):
+                if data.get(key):
+                    data[key] = date.fromisoformat(data[key])
+
+            result.append(Employee(**data))
+
+        return result
