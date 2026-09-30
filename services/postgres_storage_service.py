@@ -191,3 +191,9 @@ class PostgresPayrollRepository:
             ),
         )
         self.connection.commit()
+
+        self.audit(
+            "従業員保存",
+            employee.employee_id,
+            employee.name,
+        )

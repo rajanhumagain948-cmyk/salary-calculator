@@ -356,3 +356,48 @@ def test_postgres_repository_saves_employee_with_upsert():
     assert '"employee_id": "E1"' in params[1]
     assert '"monthly_salary": "200000"' in params[1]
     assert '"hire_date": "2026-01-01"' in params[1]
+
+
+def test_postgres_save_employee_writes_audit_log():
+    from datetime import date
+    from decimal import Decimal
+
+    from models.employee import Employee
+
+    executed = []
+
+    class FakeConnection:
+        def execute(self, sql, params=None):
+            executed.append((sql, params))
+            return self
+
+        def commit(self):
+            pass
+
+    repo = PostgresPayrollRepository(connection=FakeConnection())
+    executed.clear()
+
+    repo.save_employee(
+        Employee(
+            employee_id="E1",
+            name="Test Employee",
+            employment_type="正社員",
+            hire_date=date(2026, 1, 1),
+            pay_type="月給",
+            monthly_salary=Decimal("200000"),
+        )
+    )
+
+    audit_calls = [
+        (sql, params)
+        for sql, params in executed
+        if "INSERT INTO audit_log" in sql
+    ]
+
+    assert len(audit_calls) == 1
+    _, params = audit_calls[0]
+    assert params[1:] == (
+        "従業員保存",
+        "E1",
+        "Test Employee",
+    )
