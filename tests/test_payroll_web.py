@@ -830,3 +830,59 @@ def test_employee_cannot_list_all_payroll_results(tmp_path, monkeypatch):
     response = client.get("/payroll-results/2026-09")
 
     assert response.status_code == 403
+
+
+def test_payroll_calculation_uses_postgres_company_name(tmp_path, monkeypatch):
+    from datetime import date
+
+    from models.company import Company
+    from models.employee import Employee
+    from models.payroll import PayrollResult, TimeClassification
+
+    test_repo = PayrollRepository(tmp_path / "payroll.sqlite3")
+    monkeypatch.setattr(main, "repo", test_repo)
+
+    test_repo.save_employee(
+        Employee(
+            employee_id="E1",
+            name="給与テスト",
+            employment_type="正社員",
+            hire_date=date(2026, 1, 1),
+            pay_type="月給",
+            monthly_salary=Decimal("200000"),
+        )
+    )
+
+    class Admin:
+        role = "admin"
+
+    class PostgresCompanyRepository:
+        def company(self):
+            return Company(name="PostgreSQL株式会社")
+
+    def fake_calculate_payroll(**kwargs):
+        return PayrollResult(
+            employee_id="E1",
+            year_month="2026-09",
+            classification=TimeClassification(),
+        )
+
+    monkeypatch.setenv(
+        "DATABASE_URL",
+        "postgresql://user:password@db.example.com/payroll",
+    )
+    monkeypatch.setattr(main, "auth_repo", PostgresCompanyRepository())
+    monkeypatch.setattr(main, "require_user", lambda request: Admin())
+    monkeypatch.setattr(main, "calculate_payroll", fake_calculate_payroll)
+
+    client = TestClient(main.app)
+    response = client.post(
+        "/payroll/calculate",
+        data={
+            "employee_id": "E1",
+            "year_month": "2026-09",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["company_name"] == "PostgreSQL株式会社"

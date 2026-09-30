@@ -2207,7 +2207,7 @@ def calculate_employee_payroll(
             detail=str(error),
         ) from error
 
-    result.company_name = repo.company().name
+    result.company_name = company_repository().company().name
     repo.save_payroll_result(result)
 
     return payroll_result_to_dict(result)
