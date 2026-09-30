@@ -298,3 +298,22 @@ def test_postgres_save_company_writes_audit_log():
         "company",
         "Example",
     )
+
+
+def test_postgres_repository_initializes_employees_table():
+    executed = []
+
+    class FakeConnection:
+        def execute(self, sql, params=None):
+            executed.append((sql, params))
+            return self
+
+        def commit(self):
+            pass
+
+    PostgresPayrollRepository(connection=FakeConnection())
+
+    assert any(
+        "CREATE TABLE IF NOT EXISTS employees" in sql
+        for sql, _ in executed
+    )

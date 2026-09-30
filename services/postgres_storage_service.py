@@ -45,6 +45,14 @@ class PostgresPayrollRepository:
             )
             """
         )
+        self.connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS employees (
+                employee_id TEXT PRIMARY KEY,
+                payload TEXT NOT NULL
+            )
+            """
+        )
         self.connection.commit()
 
     def save_user(self, user) -> None:
