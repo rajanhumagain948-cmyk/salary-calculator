@@ -1439,9 +1439,15 @@ def employees(request: Request):
     if user.role != "admin":
         raise HTTPException(status_code=403, detail="admin only")
 
+    employee_repo = (
+        auth_repo
+        if database_url_from_env()
+        else repo
+    )
+
     return [
         {"employee_id": e.employee_id, "name": e.name}
-        for e in repo.employees()
+        for e in employee_repo.employees()
     ]
 
 
