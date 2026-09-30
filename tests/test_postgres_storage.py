@@ -317,3 +317,42 @@ def test_postgres_repository_initializes_employees_table():
         "CREATE TABLE IF NOT EXISTS employees" in sql
         for sql, _ in executed
     )
+
+
+def test_postgres_repository_saves_employee_with_upsert():
+    from datetime import date
+    from decimal import Decimal
+
+    from models.employee import Employee
+
+    executed = []
+
+    class FakeConnection:
+        def execute(self, sql, params=None):
+            executed.append((sql, params))
+            return self
+
+        def commit(self):
+            pass
+
+    repo = PostgresPayrollRepository(connection=FakeConnection())
+    executed.clear()
+
+    repo.save_employee(
+        Employee(
+            employee_id="E1",
+            name="Test Employee",
+            employment_type="正社員",
+            hire_date=date(2026, 1, 1),
+            pay_type="月給",
+            monthly_salary=Decimal("200000"),
+        )
+    )
+
+    sql, params = executed[0]
+    assert "INSERT INTO employees" in sql
+    assert "ON CONFLICT (employee_id) DO UPDATE" in sql
+    assert params[0] == "E1"
+    assert '"employee_id": "E1"' in params[1]
+    assert '"monthly_salary": "200000"' in params[1]
+    assert '"hire_date": "2026-01-01"' in params[1]

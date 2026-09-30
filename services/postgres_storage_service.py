@@ -169,3 +169,25 @@ class PostgresPayrollRepository:
             ),
         )
         self.connection.commit()
+
+    def save_employee(self, employee) -> None:
+        import json
+        from dataclasses import asdict
+
+        self.connection.execute(
+            """
+            INSERT INTO employees (employee_id, payload)
+            VALUES (%s, %s)
+            ON CONFLICT (employee_id) DO UPDATE SET
+                payload = EXCLUDED.payload
+            """,
+            (
+                employee.employee_id,
+                json.dumps(
+                    asdict(employee),
+                    ensure_ascii=False,
+                    default=lambda value: str(value),
+                ),
+            ),
+        )
+        self.connection.commit()
